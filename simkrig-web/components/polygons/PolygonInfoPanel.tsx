@@ -5,15 +5,17 @@ import { calculatePerimeter } from "@/lib/geometry/calculatePerimeter";
 import {
   METHOD_LABELS,
   type Point,
-  type PolygonMethod,
 } from "@/lib/geometry/polygonTypes";
+import type { Drillhole } from "@/types/Drillhole";
+import type { InfluencePolygon } from "@/types/InfluencePolygon";
 import PolygonVertexEditor from "./PolygonVertexEditor";
 
 type PolygonInfoPanelProps = {
-  method: PolygonMethod;
-  vertices: readonly Point[];
+  polygon: InfluencePolygon;
+  drillholes: readonly Drillhole[];
   onMoveVertex: (index: number, point: Omit<Point, "id">) => void;
   onRemoveVertex: (index: number) => void;
+  onToggleDrillhole: (id: string) => void;
 };
 
 const numberFormat = new Intl.NumberFormat("es-CL", {
@@ -21,11 +23,13 @@ const numberFormat = new Intl.NumberFormat("es-CL", {
 });
 
 export default function PolygonInfoPanel({
-  method,
-  vertices,
+  polygon,
+  drillholes,
   onMoveVertex,
   onRemoveVertex,
+  onToggleDrillhole,
 }: PolygonInfoPanelProps) {
+  const { method, vertices, drillholeIds } = polygon;
   const isComplete = vertices.length >= 3;
   const area = calculateArea(vertices);
   const perimeter = calculatePerimeter(vertices);
@@ -66,8 +70,12 @@ export default function PolygonInfoPanel({
       </div>
 
       <div className="summary-vertex-count">
-        <span>VÉRTICES DEFINIDOS</span>
+        <span>VÉRTICES DEL POLÍGONO</span>
         <strong>{String(vertices.length).padStart(2, "0")}</strong>
+      </div>
+      <div className="summary-vertex-count">
+        <span>SONDAJES VINCULADOS</span>
+        <strong>{String(drillholeIds.length).padStart(2, "0")}</strong>
       </div>
 
       <div className={`result-status ${isComplete ? "result-valid" : "result-pending"}`}>
@@ -85,6 +93,44 @@ export default function PolygonInfoPanel({
           </p>
         </div>
       </div>
+
+      <section className="linked-drillholes" aria-labelledby="linked-drillholes-heading">
+        <div className="subsection-title">
+          <h3 id="linked-drillholes-heading">Sondajes vinculados</h3>
+          <span>{drillholeIds.length} / {drillholes.length}</span>
+        </div>
+        {drillholes.length === 0 ? (
+          <p className="vertex-empty">Agrega sondajes desde el gestor para vincularlos.</p>
+        ) : (
+          <div className="linked-drillhole-list">
+            {drillholes.map((drillhole) => {
+              const isLinked = drillholeIds.includes(drillhole.id);
+
+              return (
+                <div className="linked-drillhole-row" key={drillhole.id}>
+                  <span className="drillhole-list-symbol" aria-hidden="true">⊕</span>
+                  <div>
+                    <strong>{drillhole.name}</strong>
+                    <span>
+                      X {drillhole.x.toFixed(1)} · Y {drillhole.y.toFixed(1)} m
+                    </span>
+                  </div>
+                  <button
+                    aria-label={`${isLinked ? "Desvincular" : "Vincular"} ${drillhole.name} ${isLinked ? "del" : "al"} polígono`}
+                    aria-pressed={isLinked}
+                    className={`link-drillhole-button ${isLinked ? "is-linked" : ""}`}
+                    disabled={!isLinked && !isComplete}
+                    onClick={() => onToggleDrillhole(drillhole.id)}
+                    type="button"
+                  >
+                    {isLinked ? "Vinculado" : "Vincular"}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
 
       <PolygonVertexEditor
         onMoveVertex={onMoveVertex}

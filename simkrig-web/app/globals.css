@@ -462,6 +462,119 @@ button.method-option:hover {
   line-height: 1.55;
 }
 
+.left-workspace-column {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.drillhole-manager {
+  padding-bottom: 15px;
+}
+
+.drillhole-form {
+  padding-top: 14px;
+}
+
+.drillhole-form .subsection-title > span {
+  color: #71bcb6;
+  font-family: var(--font-geist-mono), monospace;
+}
+
+.add-drillhole-button {
+  display: flex;
+  width: 100%;
+  min-height: 33px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin-top: 10px;
+  border: 1px solid rgb(81 199 193 / 36%);
+  border-radius: 3px;
+  background: rgb(81 199 193 / 9%);
+  color: #9bd6d0;
+  cursor: pointer;
+  font-size: 9px;
+}
+
+.add-drillhole-button:hover:not(:disabled) {
+  border-color: #61bcb4;
+  background: rgb(81 199 193 / 16%);
+}
+
+.add-drillhole-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.add-drillhole-button > span {
+  font-size: 15px;
+}
+
+.drillhole-list-section {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid #24313a;
+}
+
+.drillhole-list {
+  display: flex;
+  max-height: 190px;
+  flex-direction: column;
+  gap: 3px;
+  overflow-y: auto;
+}
+
+.drillhole-list-row,
+.linked-drillhole-row {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 3px;
+}
+
+.drillhole-list-symbol {
+  flex: 0 0 17px;
+  color: #62c6bd;
+  font-size: 16px;
+  text-align: center;
+}
+
+.drillhole-list-row > div,
+.linked-drillhole-row > div {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.drillhole-list-row strong,
+.linked-drillhole-row strong {
+  color: #c9d6d9;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 9px;
+  font-weight: 500;
+}
+
+.drillhole-list-row > div > span,
+.linked-drillhole-row > div > span {
+  overflow: hidden;
+  color: #78868d;
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.drillhole-manager-hint {
+  margin: 11px 0 0;
+  color: #73818a;
+  font-size: 8px;
+  line-height: 1.5;
+}
+
 .workspace-center {
   display: flex;
   min-width: 0;
@@ -610,6 +723,63 @@ button.method-option:hover {
   stroke-linejoin: round;
   stroke-width: 2.5;
   pointer-events: none;
+}
+
+.drillhole-marker {
+  cursor: grab;
+  outline: none;
+}
+
+.drillhole-marker:active {
+  cursor: grabbing;
+}
+
+.drillhole-hit-area {
+  fill: transparent;
+  stroke: transparent;
+}
+
+.drillhole-halo {
+  fill: #0a161c;
+  stroke: #56c8c0;
+  stroke-width: 1.7;
+}
+
+.drillhole-core {
+  fill: #a4eee4;
+}
+
+.drillhole-crosshair {
+  fill: none;
+  stroke: #56c8c0;
+  stroke-width: 1.4;
+}
+
+.drillhole-marker.is-linked .drillhole-halo {
+  fill: #16302f;
+  stroke: #e5b35e;
+  stroke-width: 2.2;
+}
+
+.drillhole-marker.is-linked .drillhole-core,
+.drillhole-marker.is-linked .drillhole-crosshair {
+  stroke: #e5b35e;
+  fill: #f0ce84;
+}
+
+.drillhole-label {
+  fill: #8eddd5;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 11px;
+  font-weight: 600;
+  paint-order: stroke;
+  stroke: #0a1217;
+  stroke-width: 3px;
+  user-select: none;
+}
+
+.drillhole-marker.is-linked .drillhole-label {
+  fill: #f0ce84;
 }
 
 .vertex-marker {
@@ -952,6 +1122,58 @@ button.method-option:hover {
   line-height: 1.5;
 }
 
+.linked-drillholes {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid #24313a;
+}
+
+.linked-drillhole-list {
+  display: flex;
+  max-height: 160px;
+  flex-direction: column;
+  gap: 2px;
+  overflow-y: auto;
+}
+
+.linked-drillhole-row {
+  min-height: 36px;
+  padding: 4px 0;
+}
+
+.linked-drillhole-row .drillhole-list-symbol {
+  font-size: 14px;
+}
+
+.link-drillhole-button {
+  min-width: 63px;
+  min-height: 24px;
+  padding: 0 6px;
+  border: 1px solid #34444b;
+  border-radius: 3px;
+  background: #111a20;
+  color: #a8b8ba;
+  cursor: pointer;
+  font-size: 8px;
+  white-space: nowrap;
+}
+
+.link-drillhole-button:hover:not(:disabled) {
+  border-color: #64b7ae;
+  color: #b6e5de;
+}
+
+.link-drillhole-button.is-linked {
+  border-color: rgb(229 168 75 / 36%);
+  background: rgb(229 168 75 / 8%);
+  color: #dfc17f;
+}
+
+.link-drillhole-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
 .calculation-note {
   display: flex;
   align-items: flex-start;
@@ -1070,7 +1292,7 @@ button.method-option:hover {
     gap: 11px;
   }
 
-  .polygon-toolbar {
+  .left-workspace-column {
     order: 0;
   }
 

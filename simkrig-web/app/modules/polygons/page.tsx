@@ -3,8 +3,11 @@
 import { useState } from "react";
 import Link from "next/link";
 import PolygonCanvas from "@/components/polygons/PolygonCanvas";
+import DrillholeManager from "@/components/polygons/DrillholeManager";
 import PolygonInfoPanel from "@/components/polygons/PolygonInfoPanel";
 import PolygonToolbar from "@/components/polygons/PolygonToolbar";
+import type { Drillhole } from "@/types/Drillhole";
+import type { InfluencePolygon } from "@/types/InfluencePolygon";
 import {
   CANVAS_HEIGHT,
   CANVAS_WIDTH,
@@ -40,6 +43,9 @@ export default function PolygonConstructorPage() {
   const [method, setMethod] = useState<PolygonMethod>("free");
   const [vertices, setVertices] = useState<Point[]>([]);
   const [rectangleSize, setRectangleSize] = useState(DEFAULT_RECTANGLE);
+  const [drillholes, setDrillholes] = useState<Drillhole[]>([]);
+  const [linkedDrillholeIds, setLinkedDrillholeIds] = useState<string[]>([]);
+  const [nextDrillholeNumber, setNextDrillholeNumber] = useState(1);
   const rectangleDimensions =
     method === "rectangle" && vertices.length === 4
       ? {
@@ -49,6 +55,13 @@ export default function PolygonConstructorPage() {
       : rectangleSize;
   const canAddVertex =
     method === "free" || (method === "triangle" && vertices.length < 3);
+  const polygon: InfluencePolygon = {
+    id: "active-influence-polygon",
+    method,
+    vertices,
+    drillholeIds: linkedDrillholeIds,
+  };
+  const nextDrillholeName = `SND${String(nextDrillholeNumber).padStart(3, "0")}`;
 
   function selectMethod(nextMethod: PolygonMethod) {
     if (nextMethod === "voronoi" || nextMethod === "convex-hull" || nextMethod === "alpha-shape") {
@@ -56,6 +69,7 @@ export default function PolygonConstructorPage() {
     }
 
     setMethod(nextMethod);
+    setLinkedDrillholeIds([]);
     if (nextMethod === "rectangle") {
       setVertices(
         createRectangle(rectangleDimensions.width, rectangleDimensions.height),
@@ -145,6 +159,52 @@ export default function PolygonConstructorPage() {
 
   function clearVertices() {
     setVertices([]);
+    setLinkedDrillholeIds([]);
+  }
+
+  function addDrillhole(coordinates: { x: number; y: number }) {
+    const drillhole: Drillhole = {
+      id: `drillhole-${Date.now()}-${nextDrillholeNumber}`,
+      name: nextDrillholeName,
+      x: Number(coordinates.x.toFixed(1)),
+      y: Number(coordinates.y.toFixed(1)),
+    };
+
+    setDrillholes((current) => [...current, drillhole]);
+    setNextDrillholeNumber((current) => current + 1);
+  }
+
+  function moveDrillhole(id: string, coordinates: { x: number; y: number }) {
+    const x = Math.max(0, Math.min(CANVAS_WIDTH, coordinates.x));
+    const y = Math.max(0, Math.min(CANVAS_HEIGHT, coordinates.y));
+    setDrillholes((current) =>
+      current.map((drillhole) =>
+        drillhole.id === id
+          ? {
+              ...drillhole,
+              x: Number(x.toFixed(1)),
+              y: Number(y.toFixed(1)),
+            }
+          : drillhole,
+      ),
+    );
+  }
+
+  function deleteDrillhole(id: string) {
+    setDrillholes((current) =>
+      current.filter((drillhole) => drillhole.id !== id),
+    );
+    setLinkedDrillholeIds((current) =>
+      current.filter((drillholeId) => drillholeId !== id),
+    );
+  }
+
+  function toggleDrillholeLink(id: string) {
+    setLinkedDrillholeIds((current) =>
+      current.includes(id)
+        ? current.filter((drillholeId) => drillholeId !== id)
+        : [...current, id],
+    );
   }
 
   return (
@@ -182,22 +242,33 @@ export default function PolygonConstructorPage() {
         </section>
 
         <section className="workspace-grid" aria-label="Constructor de polígonos">
-          <PolygonToolbar
-            canUndo={vertices.length > 0}
-            height={rectangleDimensions.height}
-            method={method}
-            onClear={clearVertices}
-            onDimensionsChange={changeRectangleDimensions}
-            onMethodChange={selectMethod}
-            onUndo={() => setVertices((current) => current.slice(0, -1))}
-            vertexCount={vertices.length}
-            width={rectangleDimensions.width}
-          />
+          <div className="left-workspace-column">
+            <PolygonToolbar
+              canUndo={vertices.length > 0}
+              height={rectangleDimensions.height}
+              method={method}
+              onClear={clearVertices}
+              onDimensionsChange={changeRectangleDimensions}
+              onMethodChange={selectMethod}
+              onUndo={() => setVertices((current) => current.slice(0, -1))}
+              vertexCount={vertices.length}
+              width={rectangleDimensions.width}
+            />
+            <DrillholeManager
+              drillholes={drillholes}
+              nextName={nextDrillholeName}
+              onAdd={addDrillhole}
+              onDelete={deleteDrillhole}
+            />
+          </div>
 
           <div className="workspace-center">
             <PolygonCanvas
+              drillholes={drillholes}
+              linkedDrillholeIds={linkedDrillholeIds}
               method={method}
               onAddVertex={addVertex}
+              onMoveDrillhole={moveDrillhole}
               onMoveVertex={moveVertex}
               vertices={vertices}
             />
@@ -209,10 +280,11 @@ export default function PolygonConstructorPage() {
           </div>
 
           <PolygonInfoPanel
-            method={method}
+            drillholes={drillholes}
+            onToggleDrillhole={toggleDrillholeLink}
             onMoveVertex={moveVertex}
             onRemoveVertex={removeVertex}
-            vertices={vertices}
+            polygon={polygon}
           />
         </section>
 

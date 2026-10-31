@@ -7,21 +7,31 @@ import {
   type Point,
   type PolygonMethod,
 } from "@/lib/geometry/polygonTypes";
+import type { Drillhole } from "@/types/Drillhole";
+import DrillholeLayer from "./DrillholeLayer";
 
 type PolygonCanvasProps = {
   vertices: readonly Point[];
+  drillholes: readonly Drillhole[];
+  linkedDrillholeIds: readonly string[];
   method: PolygonMethod;
   onAddVertex: (point: Omit<Point, "id">) => void;
   onMoveVertex: (index: number, point: Omit<Point, "id">) => void;
+  onMoveDrillhole: (id: string, point: { x: number; y: number }) => void;
 };
 
 export default function PolygonCanvas({
   vertices,
+  drillholes,
+  linkedDrillholeIds,
   method,
   onAddVertex,
   onMoveVertex,
+  onMoveDrillhole,
 }: PolygonCanvasProps) {
-  const draggingIndex = useRef<number | null>(null);
+  const draggingTarget = useRef<
+    { type: "vertex"; index: number } | { type: "drillhole"; id: string } | null
+  >(null);
 
   function getCanvasPoint(
     event: React.PointerEvent<SVGSVGElement>,
@@ -48,11 +58,29 @@ export default function PolygonCanvas({
 
   function handlePointerDown(event: React.PointerEvent<SVGSVGElement>) {
     const target = event.target;
+    const drillholeTarget =
+      target instanceof Element
+        ? target.closest<SVGElement>("[data-drillhole-id]")
+        : null;
+
+    if (drillholeTarget) {
+      draggingTarget.current = {
+        type: "drillhole",
+        id: drillholeTarget.dataset.drillholeId ?? "",
+      };
+      event.currentTarget.setPointerCapture(event.pointerId);
+      event.preventDefault();
+      return;
+    }
+
     const vertexTarget =
       target instanceof Element ? target.closest<SVGElement>("[data-vertex-index]") : null;
 
     if (vertexTarget) {
-      draggingIndex.current = Number(vertexTarget.dataset.vertexIndex);
+      draggingTarget.current = {
+        type: "vertex",
+        index: Number(vertexTarget.dataset.vertexIndex),
+      };
       event.currentTarget.setPointerCapture(event.pointerId);
       event.preventDefault();
       return;
@@ -62,8 +90,11 @@ export default function PolygonCanvas({
   }
 
   function handlePointerMove(event: React.PointerEvent<SVGSVGElement>) {
-    if (draggingIndex.current !== null) {
-      onMoveVertex(draggingIndex.current, getCanvasPoint(event));
+    const point = getCanvasPoint(event);
+    if (draggingTarget.current?.type === "vertex") {
+      onMoveVertex(draggingTarget.current.index, point);
+    } else if (draggingTarget.current?.type === "drillhole") {
+      onMoveDrillhole(draggingTarget.current.id, point);
     }
   }
 
@@ -71,7 +102,7 @@ export default function PolygonCanvas({
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
-    draggingIndex.current = null;
+    draggingTarget.current = null;
   }
 
   const pointY = (vertex: Point) => CANVAS_HEIGHT - vertex.y;
@@ -152,6 +183,11 @@ export default function PolygonCanvas({
             />
           )}
           {isComplete && <polygon className="polygon-fill" points={points} />}
+          <DrillholeLayer
+            drillholes={drillholes}
+            linkedDrillholeIds={linkedDrillholeIds}
+            onMove={onMoveDrillhole}
+          />
           {vertices.map((vertex, index) => (
             <g
               className="vertex-marker"
