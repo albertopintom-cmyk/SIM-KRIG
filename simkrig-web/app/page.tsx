@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function Home() {
   const modules = [
     "Polígonos de Influencia",
@@ -31,24 +33,35 @@ export default function Home() {
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
 
-          {modules.map((module, index) => (
-            <div
-              key={index}
-              className="bg-slate-900 border border-slate-800 rounded-xl p-6"
-            >
-              <div className="text-yellow-400 text-2xl mb-4">
-                🚧
+          {modules.map((module, index) => {
+            const isAvailable = index === 0;
+            const Card = (
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+                <div className="text-yellow-400 text-2xl mb-4">
+                  {isAvailable ? "⌗" : "🚧"}
+                </div>
+
+                <h3 className="font-semibold text-xl">{module}</h3>
+
+                <p className="text-slate-400 mt-2">
+                  {isAvailable ? "Abrir constructor" : "Próximamente"}
+                </p>
               </div>
+            );
 
-              <h3 className="font-semibold text-xl">
-                {module}
-              </h3>
-
-              <p className="text-slate-400 mt-2">
-                Próximamente
-              </p>
-            </div>
-          ))}
+            return isAvailable ? (
+              <Link
+                aria-label="Abrir el módulo Polígonos de Influencia"
+                className="transition-transform hover:-translate-y-1"
+                href="/modules/polygons"
+                key={module}
+              >
+                {Card}
+              </Link>
+            ) : (
+              <div key={module}>{Card}</div>
+            );
+          })}
 
         </div>
 
