@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   calculateWorkspaceExtents,
+  getCoordinateBounds,
   type ViewBox,
 } from "@/lib/geometry/calculateWorkspaceExtents";
 import {
@@ -15,6 +16,21 @@ import type { Drillhole } from "@/types/Drillhole";
 import type { Triangle } from "@/types/Triangle";
 import DrillholeLayer from "./DrillholeLayer";
 import TriangulationLayer from "./TriangulationLayer";
+
+function isNearBounds(
+  point: { x: number; y: number },
+  bounds: NonNullable<ReturnType<typeof getCoordinateBounds>>,
+): boolean {
+  const marginX = Math.max((bounds.maxX - bounds.minX) * 0.1, 50);
+  const marginY = Math.max((bounds.maxY - bounds.minY) * 0.1, 50);
+
+  return (
+    point.x >= bounds.minX - marginX &&
+    point.x <= bounds.maxX + marginX &&
+    point.y >= bounds.minY - marginY &&
+    point.y <= bounds.maxY + marginY
+  );
+}
 
 type PolygonCanvasProps = {
   vertices: readonly Point[];
@@ -47,12 +63,31 @@ export default function PolygonCanvas({
   >(null);
   const [dragViewBox, setDragViewBox] = useState<ViewBox | null>(null);
   const [aspectRatio, setAspectRatio] = useState(1000 / 650);
+  const [viewportWidth, setViewportWidth] = useState(1000);
+  const importedDrillholes = drillholes.filter(
+    (drillhole) => drillhole.source === "excel",
+  );
+  const importedBounds = getCoordinateBounds(importedDrillholes);
+  const fitDrillholes = importedBounds
+    ? drillholes.filter(
+        (drillhole) =>
+          drillhole.source === "excel" ||
+          isNearBounds(drillhole, importedBounds),
+      )
+    : drillholes;
+  const fitVertices = importedBounds
+    ? vertices.filter((vertex) => isNearBounds(vertex, importedBounds))
+    : vertices;
   const autoFitViewBox = calculateWorkspaceExtents(
-    drillholes,
-    vertices,
+    fitDrillholes,
+    fitVertices,
     aspectRatio,
   );
   const viewBox = dragViewBox ?? autoFitViewBox;
+  const importedMinX = importedBounds?.minX;
+  const importedMaxX = importedBounds?.maxX;
+  const importedMinY = importedBounds?.minY;
+  const importedMaxY = importedBounds?.maxY;
 
   useEffect(() => {
     const svg = svgRef.current;
@@ -64,12 +99,48 @@ export default function PolygonCanvas({
       const { width, height } = entry.contentRect;
       if (width > 0 && height > 0) {
         setAspectRatio(width / height);
+        setViewportWidth(width);
       }
     });
 
     observer.observe(svg);
     return () => observer.disconnect();
   }, []);
+
+  useEffect(() => {
+    if (
+      process.env.NODE_ENV !== "development" ||
+      importedMinX === undefined ||
+      importedMaxX === undefined ||
+      importedMinY === undefined ||
+      importedMaxY === undefined
+    ) {
+      return;
+    }
+
+    console.debug("[SIM-KRIG] Drillhole Auto-Fit", {
+      minX: importedMinX,
+      maxX: importedMaxX,
+      minY: importedMinY,
+      maxY: importedMaxY,
+      viewBox: {
+        x: autoFitViewBox.x,
+        y: autoFitViewBox.y,
+        width: autoFitViewBox.width,
+        height: autoFitViewBox.height,
+      },
+    });
+  }, [
+    drillholes,
+    importedMinX,
+    importedMaxX,
+    importedMinY,
+    importedMaxY,
+    autoFitViewBox.x,
+    autoFitViewBox.y,
+    autoFitViewBox.width,
+    autoFitViewBox.height,
+  ]);
 
   function getCanvasPoint(
     event: React.PointerEvent<SVGSVGElement>,
@@ -221,8 +292,20 @@ export default function PolygonCanvas({
               <path className="major-grid-line" d="M 250 0 L 0 0 0 250" fill="none" />
             </pattern>
           </defs>
-          <rect fill="url(#minor-grid)" height={CANVAS_HEIGHT} width={CANVAS_WIDTH} />
-          <rect fill="url(#major-grid)" height={CANVAS_HEIGHT} width={CANVAS_WIDTH} />
+          <rect
+            fill="url(#minor-grid)"
+            height={viewBox.height}
+            width={viewBox.width}
+            x={viewBox.x}
+            y={viewBox.y}
+          />
+          <rect
+            fill="url(#major-grid)"
+            height={viewBox.height}
+            width={viewBox.width}
+            x={viewBox.x}
+            y={viewBox.y}
+          />
           <line
             className="canvas-axis"
             x1={CANVAS_WIDTH / 2}
@@ -250,6 +333,7 @@ export default function PolygonCanvas({
             drillholes={drillholes}
             linkedDrillholeIds={linkedDrillholeIds}
             selectedDrillholeId={selectedDrillholeId}
+            screenScale={viewBox.width / Math.max(viewportWidth, 1)}
             viewBox={viewBox}
             onMove={onMoveDrillhole}
           />
@@ -284,7 +368,7 @@ export default function PolygonCanvas({
               </text>
             </g>
           ))}
-          {vertices.length === 0 && (
+          {vertices.length === 0 && drillholes.length === 0 && (
             <g className="canvas-empty-state" pointerEvents="none">
               <circle cx={CANVAS_WIDTH / 2} cy={CANVAS_HEIGHT / 2 - 20} r="25" />
               <path

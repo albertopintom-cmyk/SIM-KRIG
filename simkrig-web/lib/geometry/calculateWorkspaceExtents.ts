@@ -9,8 +9,38 @@ export interface ViewBox {
   height: number;
 }
 
+export interface CoordinateBounds {
+  minX: number;
+  maxX: number;
+  minY: number;
+  maxY: number;
+}
+
 const MINIMUM_EXTENT = 100;
 const EXTENT_PADDING = 0.1;
+
+export function getCoordinateBounds(
+  coordinates: readonly Pick<Point, "x" | "y">[],
+): CoordinateBounds | null {
+  if (coordinates.length === 0) {
+    return null;
+  }
+
+  return coordinates.reduce<CoordinateBounds>(
+    (bounds, { x, y }) => ({
+      minX: Math.min(bounds.minX, x),
+      maxX: Math.max(bounds.maxX, x),
+      minY: Math.min(bounds.minY, y),
+      maxY: Math.max(bounds.maxY, y),
+    }),
+    {
+      minX: coordinates[0].x,
+      maxX: coordinates[0].x,
+      minY: coordinates[0].y,
+      maxY: coordinates[0].y,
+    },
+  );
+}
 
 export function calculateWorkspaceExtents(
   drillholes: readonly Drillhole[],
@@ -35,10 +65,12 @@ export function calculateWorkspaceExtents(
     };
   }
 
-  const minX = Math.min(...coordinates.map(({ x }) => x));
-  const maxX = Math.max(...coordinates.map(({ x }) => x));
-  const minY = Math.min(...coordinates.map(({ y }) => y));
-  const maxY = Math.max(...coordinates.map(({ y }) => y));
+  const bounds = getCoordinateBounds(coordinates);
+  if (!bounds) {
+    throw new Error("Workspace extents require at least one coordinate.");
+  }
+
+  const { minX, maxX, minY, maxY } = bounds;
   const centerX = (minX + maxX) / 2;
   const centerY = (minY + maxY) / 2;
   const paddedWidth = Math.max(maxX - minX, MINIMUM_EXTENT) * (1 + EXTENT_PADDING * 2);

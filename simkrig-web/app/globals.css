@@ -1131,13 +1131,19 @@ button.method-option:hover {
 .drillhole-label {
   fill: #e4fffa;
   font-family: var(--font-geist-mono), monospace;
-  font-size: 24px;
+  font-size: 14px;
   font-weight: 700;
   paint-order: stroke;
   stroke: #03090d;
   stroke-linejoin: round;
-  stroke-width: 5px;
+  stroke-width: 2px;
   user-select: none;
+}
+
+.drillhole-offscreen-indicator {
+  fill: #f0c46d;
+  stroke: #0a1217;
+  stroke-width: 1.5px;
 }
 
 .drillhole-marker:focus-visible .drillhole-halo {
@@ -1151,7 +1157,6 @@ button.method-option:hover {
 
 .drillhole-marker.is-selected .drillhole-label {
   fill: #ffffff;
-  font-size: 29px;
   font-weight: 700;
 }
 
@@ -1981,11 +1986,4 @@ button.method-option:hover {
     font-size: 9px;
   }
 
-  .polygon-app .drillhole-label {
-    font-size: 52px;
-  }
-
-  .polygon-app .drillhole-marker.is-selected .drillhole-label {
-    font-size: 58px;
-  }
 }

@@ -184,6 +184,7 @@ export default function PolygonConstructorPage() {
       name: nextDrillholeName,
       x: Number(coordinates.x.toFixed(1)),
       y: Number(coordinates.y.toFixed(1)),
+      source: "manual",
     };
 
     setDrillholes((current) => [...current, drillhole]);
@@ -243,6 +244,7 @@ export default function PolygonConstructorPage() {
     const imported = result.drillholes.map((drillhole) => ({
       ...drillhole,
       id: `drillhole-import-${crypto.randomUUID()}`,
+      source: "excel" as const,
     }));
 
     setDrillholes((current) => [...current, ...imported]);

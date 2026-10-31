@@ -3,6 +3,7 @@ export interface Drillhole {
   name: string;
   x: number;
   y: number;
+  source?: "manual" | "excel";
   z?: number;
   depth?: number;
   thickness?: number;
