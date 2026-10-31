@@ -575,6 +575,101 @@ button.method-option:hover {
   line-height: 1.5;
 }
 
+.triangulation-controls {
+  padding-bottom: 15px;
+}
+
+.triangulation-algorithm {
+  display: grid;
+  grid-template-columns: 7px auto 1fr;
+  align-items: center;
+  gap: 7px;
+  margin: 14px 0 12px;
+  color: #718089;
+  font-size: 7px;
+  letter-spacing: 0.08em;
+}
+
+.algorithm-status {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #64c0b7;
+  box-shadow: 0 0 7px rgb(81 199 193 / 40%);
+}
+
+.triangulation-algorithm strong {
+  justify-self: end;
+  color: #aab8bb;
+  font-size: 8px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-align: right;
+}
+
+.generate-triangulation-button {
+  display: flex;
+  width: 100%;
+  min-height: 37px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid rgb(229 168 75 / 42%);
+  border-radius: 3px;
+  background: rgb(229 168 75 / 10%);
+  color: #e6c47f;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.generate-triangulation-button:hover:not(:disabled) {
+  border-color: #e5a84b;
+  background: rgb(229 168 75 / 17%);
+}
+
+.generate-triangulation-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.generate-triangulation-button > span {
+  font-size: 13px;
+}
+
+.triangulation-hint {
+  margin: 8px 0 0;
+  color: #78868d;
+  font-size: 8px;
+  line-height: 1.5;
+}
+
+.triangulation-ready,
+.triangulation-error {
+  margin-top: 10px;
+  color: #8fc9aa;
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+.triangulation-ready > span {
+  margin-right: 5px;
+}
+
+.triangulation-error {
+  color: #d3a779;
+}
+
+.future-algorithm {
+  margin-top: 13px;
+  padding-top: 10px;
+  border-top: 1px solid #25313a;
+  color: #66747b;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 7px;
+  letter-spacing: 0.08em;
+}
+
 .workspace-center {
   display: flex;
   min-width: 0;
@@ -723,6 +818,28 @@ button.method-option:hover {
   stroke-linejoin: round;
   stroke-width: 2.5;
   pointer-events: none;
+}
+
+.triangulation-cell polygon {
+  fill: rgb(229 168 75 / 7%);
+  stroke: #e3ae59;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+  pointer-events: none;
+}
+
+.triangulation-cell text {
+  fill: #f0cb83;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 11px;
+  font-weight: 600;
+  paint-order: stroke;
+  stroke: #0a1217;
+  stroke-width: 3px;
+  text-anchor: middle;
+  dominant-baseline: central;
+  pointer-events: none;
+  user-select: none;
 }
 
 .drillhole-marker {
@@ -1126,6 +1243,77 @@ button.method-option:hover {
   margin-top: 16px;
   padding-top: 14px;
   border-top: 1px solid #24313a;
+}
+
+.triangulation-summary {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid #24313a;
+}
+
+.triangulation-total-area {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 9px 0;
+  color: #77868e;
+  font-size: 8px;
+}
+
+.triangulation-total-area > span:first-child {
+  margin-right: auto;
+  font-size: 7px;
+  letter-spacing: 0.07em;
+}
+
+.triangulation-total-area strong {
+  color: #d9e3e5;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.triangle-result-list {
+  display: flex;
+  max-height: 135px;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.triangle-result-row {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  gap: 7px;
+  padding: 6px 0;
+  border-top: 1px solid #202d35;
+  color: #7d8b91;
+  font-size: 8px;
+}
+
+.triangle-drillhole-names {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.triangle-result-row strong {
+  color: #dfb86e;
+  font-family: var(--font-geist-mono), monospace;
+  font-weight: 500;
+}
+
+.triangle-result-measures {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  color: #b7c3c6;
+  font-family: var(--font-geist-mono), monospace;
+  text-align: right;
+}
+
+.triangle-result-measures small {
+  color: #78868e;
+  font-size: 7px;
 }
 
 .linked-drillhole-list {

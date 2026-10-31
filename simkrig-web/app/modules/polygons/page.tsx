@@ -6,8 +6,11 @@ import PolygonCanvas from "@/components/polygons/PolygonCanvas";
 import DrillholeManager from "@/components/polygons/DrillholeManager";
 import PolygonInfoPanel from "@/components/polygons/PolygonInfoPanel";
 import PolygonToolbar from "@/components/polygons/PolygonToolbar";
+import TriangulationControls from "@/components/polygons/TriangulationControls";
+import { generateTriangulation } from "@/lib/geometry/generateTriangulation";
 import type { Drillhole } from "@/types/Drillhole";
 import type { InfluencePolygon } from "@/types/InfluencePolygon";
+import type { Triangle } from "@/types/Triangle";
 import {
   CANVAS_HEIGHT,
   CANVAS_WIDTH,
@@ -44,6 +47,9 @@ export default function PolygonConstructorPage() {
   const [vertices, setVertices] = useState<Point[]>([]);
   const [rectangleSize, setRectangleSize] = useState(DEFAULT_RECTANGLE);
   const [drillholes, setDrillholes] = useState<Drillhole[]>([]);
+  const [triangles, setTriangles] = useState<Triangle[]>([]);
+  const [hasGeneratedTriangulation, setHasGeneratedTriangulation] =
+    useState(false);
   const [linkedDrillholeIds, setLinkedDrillholeIds] = useState<string[]>([]);
   const [nextDrillholeNumber, setNextDrillholeNumber] = useState(1);
   const rectangleDimensions =
@@ -172,6 +178,8 @@ export default function PolygonConstructorPage() {
 
     setDrillholes((current) => [...current, drillhole]);
     setNextDrillholeNumber((current) => current + 1);
+    setTriangles([]);
+    setHasGeneratedTriangulation(false);
   }
 
   function moveDrillhole(id: string, coordinates: { x: number; y: number }) {
@@ -188,6 +196,8 @@ export default function PolygonConstructorPage() {
           : drillhole,
       ),
     );
+    setTriangles([]);
+    setHasGeneratedTriangulation(false);
   }
 
   function deleteDrillhole(id: string) {
@@ -197,6 +207,14 @@ export default function PolygonConstructorPage() {
     setLinkedDrillholeIds((current) =>
       current.filter((drillholeId) => drillholeId !== id),
     );
+    setTriangles([]);
+    setHasGeneratedTriangulation(false);
+  }
+
+  function generateDrillholeTriangulation() {
+    const result = generateTriangulation(drillholes);
+    setTriangles(result);
+    setHasGeneratedTriangulation(true);
   }
 
   function toggleDrillholeLink(id: string) {
@@ -260,6 +278,12 @@ export default function PolygonConstructorPage() {
               onAdd={addDrillhole}
               onDelete={deleteDrillhole}
             />
+            <TriangulationControls
+              drillholeCount={drillholes.length}
+              hasGenerated={hasGeneratedTriangulation}
+              onGenerate={generateDrillholeTriangulation}
+              triangleCount={triangles.length}
+            />
           </div>
 
           <div className="workspace-center">
@@ -270,6 +294,7 @@ export default function PolygonConstructorPage() {
               onAddVertex={addVertex}
               onMoveDrillhole={moveDrillhole}
               onMoveVertex={moveVertex}
+              triangles={triangles}
               vertices={vertices}
             />
             <div className="canvas-legend">
@@ -285,6 +310,7 @@ export default function PolygonConstructorPage() {
             onMoveVertex={moveVertex}
             onRemoveVertex={removeVertex}
             polygon={polygon}
+            triangles={triangles}
           />
         </section>
 

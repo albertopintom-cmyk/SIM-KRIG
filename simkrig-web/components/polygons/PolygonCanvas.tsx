@@ -8,11 +8,14 @@ import {
   type PolygonMethod,
 } from "@/lib/geometry/polygonTypes";
 import type { Drillhole } from "@/types/Drillhole";
+import type { Triangle } from "@/types/Triangle";
 import DrillholeLayer from "./DrillholeLayer";
+import TriangulationLayer from "./TriangulationLayer";
 
 type PolygonCanvasProps = {
   vertices: readonly Point[];
   drillholes: readonly Drillhole[];
+  triangles: readonly Triangle[];
   linkedDrillholeIds: readonly string[];
   method: PolygonMethod;
   onAddVertex: (point: Omit<Point, "id">) => void;
@@ -23,6 +26,7 @@ type PolygonCanvasProps = {
 export default function PolygonCanvas({
   vertices,
   drillholes,
+  triangles,
   linkedDrillholeIds,
   method,
   onAddVertex,
@@ -183,6 +187,7 @@ export default function PolygonCanvas({
             />
           )}
           {isComplete && <polygon className="polygon-fill" points={points} />}
+          <TriangulationLayer triangles={triangles} />
           <DrillholeLayer
             drillholes={drillholes}
             linkedDrillholeIds={linkedDrillholeIds}

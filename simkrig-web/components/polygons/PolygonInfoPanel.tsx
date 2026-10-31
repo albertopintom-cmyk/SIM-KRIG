@@ -8,11 +8,13 @@ import {
 } from "@/lib/geometry/polygonTypes";
 import type { Drillhole } from "@/types/Drillhole";
 import type { InfluencePolygon } from "@/types/InfluencePolygon";
+import type { Triangle } from "@/types/Triangle";
 import PolygonVertexEditor from "./PolygonVertexEditor";
 
 type PolygonInfoPanelProps = {
   polygon: InfluencePolygon;
   drillholes: readonly Drillhole[];
+  triangles: readonly Triangle[];
   onMoveVertex: (index: number, point: Omit<Point, "id">) => void;
   onRemoveVertex: (index: number) => void;
   onToggleDrillhole: (id: string) => void;
@@ -25,6 +27,7 @@ const numberFormat = new Intl.NumberFormat("es-CL", {
 export default function PolygonInfoPanel({
   polygon,
   drillholes,
+  triangles,
   onMoveVertex,
   onRemoveVertex,
   onToggleDrillhole,
@@ -33,11 +36,15 @@ export default function PolygonInfoPanel({
   const isComplete = vertices.length >= 3;
   const area = calculateArea(vertices);
   const perimeter = calculatePerimeter(vertices);
+  const triangulatedArea = triangles.reduce(
+    (total, triangle) => total + triangle.area,
+    0,
+  );
 
   return (
     <aside className="polygon-panel polygon-info">
       <div className="panel-heading">
-        <span className="section-index">03</span>
+        <span className="section-index">04</span>
         <div>
           <h2>Resumen geométrico</h2>
           <p>Resultados en tiempo real</p>
@@ -93,6 +100,40 @@ export default function PolygonInfoPanel({
           </p>
         </div>
       </div>
+
+      <section className="triangulation-summary" aria-labelledby="triangulation-summary-heading">
+        <div className="subsection-title">
+          <h3 id="triangulation-summary-heading">Red de triangulación</h3>
+          <span>{triangles.length} TRIÁNGULOS</span>
+        </div>
+        <div className="triangulation-total-area">
+          <span>ÁREA TRIANGULADA TOTAL</span>
+          <strong>{triangles.length > 0 ? numberFormat.format(triangulatedArea) : "—"}</strong>
+          <span>m²</span>
+        </div>
+        {triangles.length > 0 && (
+          <div className="triangle-result-list">
+            {triangles.map((triangle, index) => (
+              <div className="triangle-result-row" key={triangle.id}>
+                <strong>T{String(index + 1).padStart(2, "0")}</strong>
+                <span className="triangle-drillhole-names">
+                  {triangle.drillholeIds
+                    .map(
+                      (id) =>
+                        drillholes.find((drillhole) => drillhole.id === id)?.name ??
+                        id,
+                    )
+                    .join(" · ")}
+                </span>
+                <span className="triangle-result-measures">
+                  {numberFormat.format(triangle.area)} m²
+                  <small>{numberFormat.format(triangle.perimeter)} m</small>
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
 
       <section className="linked-drillholes" aria-labelledby="linked-drillholes-heading">
         <div className="subsection-title">
