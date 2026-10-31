@@ -10,15 +10,19 @@ import type { Drillhole } from "@/types/Drillhole";
 type DrillholeManagerProps = {
   drillholes: readonly Drillhole[];
   nextName: string;
+  selectedDrillholeId: string | null;
   onAdd: (coordinates: { x: number; y: number }) => void;
   onDelete: (id: string) => void;
+  onSelect: (id: string) => void;
 };
 
 export default function DrillholeManager({
   drillholes,
   nextName,
+  selectedDrillholeId,
   onAdd,
   onDelete,
+  onSelect,
 }: DrillholeManagerProps) {
   const [x, setX] = useState("500");
   const [y, setY] = useState("320");
@@ -106,14 +110,22 @@ export default function DrillholeManager({
         ) : (
           <div className="drillhole-list">
             {drillholes.map((drillhole) => (
-              <div className="drillhole-list-row" key={drillhole.id}>
+              <div
+                className={`drillhole-list-row ${selectedDrillholeId === drillhole.id ? "is-selected" : ""}`}
+                key={drillhole.id}
+              >
                 <span className="drillhole-list-symbol" aria-hidden="true">⊕</span>
-                <div>
+                <button
+                  aria-pressed={selectedDrillholeId === drillhole.id}
+                  className="drillhole-select-button"
+                  onClick={() => onSelect(drillhole.id)}
+                  type="button"
+                >
                   <strong>{drillhole.name}</strong>
                   <span>
                     X {drillhole.x.toFixed(1)} · Y {drillhole.y.toFixed(1)} m
                   </span>
-                </div>
+                </button>
                 <button
                   aria-label={`Eliminar sondaje ${drillhole.name}`}
                   className="remove-vertex"

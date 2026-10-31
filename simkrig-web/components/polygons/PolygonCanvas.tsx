@@ -1,6 +1,10 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import {
+  calculateWorkspaceExtents,
+  type ViewBox,
+} from "@/lib/geometry/calculateWorkspaceExtents";
 import {
   CANVAS_HEIGHT,
   CANVAS_WIDTH,
@@ -16,31 +20,78 @@ type PolygonCanvasProps = {
   vertices: readonly Point[];
   drillholes: readonly Drillhole[];
   triangles: readonly Triangle[];
+  selectedDrillholeId: string | null;
   linkedDrillholeIds: readonly string[];
   method: PolygonMethod;
   onAddVertex: (point: Omit<Point, "id">) => void;
   onMoveVertex: (index: number, point: Omit<Point, "id">) => void;
   onMoveDrillhole: (id: string, point: { x: number; y: number }) => void;
+  onSelectDrillhole: (id: string) => void;
 };
 
 export default function PolygonCanvas({
   vertices,
   drillholes,
   triangles,
+  selectedDrillholeId,
   linkedDrillholeIds,
   method,
   onAddVertex,
   onMoveVertex,
   onMoveDrillhole,
+  onSelectDrillhole,
 }: PolygonCanvasProps) {
+  const svgRef = useRef<SVGSVGElement>(null);
   const draggingTarget = useRef<
     { type: "vertex"; index: number } | { type: "drillhole"; id: string } | null
   >(null);
+  const [dragViewBox, setDragViewBox] = useState<ViewBox | null>(null);
+  const [aspectRatio, setAspectRatio] = useState(1000 / 650);
+  const autoFitViewBox = calculateWorkspaceExtents(
+    drillholes,
+    vertices,
+    aspectRatio,
+  );
+  const viewBox = dragViewBox ?? autoFitViewBox;
+
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) {
+      return;
+    }
+
+    const observer = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect;
+      if (width > 0 && height > 0) {
+        setAspectRatio(width / height);
+      }
+    });
+
+    observer.observe(svg);
+    return () => observer.disconnect();
+  }, []);
 
   function getCanvasPoint(
     event: React.PointerEvent<SVGSVGElement>,
   ): Omit<Point, "id"> {
-    const bounds = event.currentTarget.getBoundingClientRect();
+    const svg = event.currentTarget;
+    const matrix = svg.getScreenCTM();
+    if (matrix) {
+      const screenPoint = svg.createSVGPoint();
+      screenPoint.x = event.clientX;
+      screenPoint.y = event.clientY;
+      const worldPoint = screenPoint.matrixTransform(matrix.inverse());
+
+      return {
+        x: Math.max(0, Math.min(CANVAS_WIDTH, worldPoint.x)),
+        y: Math.max(
+          0,
+          Math.min(CANVAS_HEIGHT, CANVAS_HEIGHT - worldPoint.y),
+        ),
+      };
+    }
+
+    const bounds = svg.getBoundingClientRect();
     return {
       x: Math.max(
         0,
@@ -68,10 +119,13 @@ export default function PolygonCanvas({
         : null;
 
     if (drillholeTarget) {
+      const drillholeId = drillholeTarget.dataset.drillholeId ?? "";
       draggingTarget.current = {
         type: "drillhole",
-        id: drillholeTarget.dataset.drillholeId ?? "",
+        id: drillholeId,
       };
+      setDragViewBox(viewBox);
+      onSelectDrillhole(drillholeId);
       event.currentTarget.setPointerCapture(event.pointerId);
       event.preventDefault();
       return;
@@ -85,6 +139,7 @@ export default function PolygonCanvas({
         type: "vertex",
         index: Number(vertexTarget.dataset.vertexIndex),
       };
+      setDragViewBox(viewBox);
       event.currentTarget.setPointerCapture(event.pointerId);
       event.preventDefault();
       return;
@@ -107,9 +162,13 @@ export default function PolygonCanvas({
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
     draggingTarget.current = null;
+    setDragViewBox(null);
   }
 
   const pointY = (vertex: Point) => CANVAS_HEIGHT - vertex.y;
+  const selectedDrillhole = drillholes.find(
+    (drillhole) => drillhole.id === selectedDrillholeId,
+  );
   const points = vertices
     .map((vertex) => `${vertex.x},${pointY(vertex)}`)
     .join(" ");
@@ -125,9 +184,21 @@ export default function PolygonCanvas({
             <p>Plano cartesiano · unidades en metros</p>
           </div>
         </div>
-        <div className="canvas-scale">
-          <span className="scale-icon" aria-hidden="true">⌗</span>
-          ESCALA 1:1
+        <div className="canvas-toolbar">
+          {selectedDrillhole && (
+            <div className="selected-drillhole-coordinates" aria-live="polite">
+              <strong>{selectedDrillhole.name}</strong>
+              <span>X {selectedDrillhole.x.toFixed(1)} m</span>
+              <span>Y {selectedDrillhole.y.toFixed(1)} m</span>
+            </div>
+          )}
+          <div
+            aria-label="Encuadre automático activo, extensión centrada con 10% de margen"
+            className="auto-fit-status"
+          >
+            <span className="scale-icon" aria-hidden="true">⌗</span>
+            AUTO-FIT · 10%
+          </div>
         </div>
       </div>
 
@@ -137,13 +208,14 @@ export default function PolygonCanvas({
         <svg
           aria-label="Canvas SVG para crear y editar vértices del polígono"
           className="polygon-svg"
+          ref={svgRef}
           onPointerCancel={handlePointerEnd}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerEnd}
-          preserveAspectRatio="none"
+          preserveAspectRatio="xMidYMid meet"
           role="application"
-          viewBox={`0 0 ${CANVAS_WIDTH} ${CANVAS_HEIGHT}`}
+          viewBox={`${viewBox.x} ${viewBox.y} ${viewBox.width} ${viewBox.height}`}
         >
           <defs>
             <pattern
@@ -191,6 +263,8 @@ export default function PolygonCanvas({
           <DrillholeLayer
             drillholes={drillholes}
             linkedDrillholeIds={linkedDrillholeIds}
+            selectedDrillholeId={selectedDrillholeId}
+            viewBox={viewBox}
             onMove={onMoveDrillhole}
           />
           {vertices.map((vertex, index) => (
@@ -239,7 +313,10 @@ export default function PolygonCanvas({
             </g>
           )}
         </svg>
-        <div className="canvas-coordinate-origin">0, 0</div>
+        <div className="canvas-coordinate-origin">
+          X {viewBox.x.toFixed(0)} · Y{" "}
+          {(CANVAS_HEIGHT - viewBox.y - viewBox.height).toFixed(0)}
+        </div>
       </div>
 
       <div className="canvas-footer">

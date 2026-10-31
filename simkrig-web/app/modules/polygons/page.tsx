@@ -47,6 +47,9 @@ export default function PolygonConstructorPage() {
   const [vertices, setVertices] = useState<Point[]>([]);
   const [rectangleSize, setRectangleSize] = useState(DEFAULT_RECTANGLE);
   const [drillholes, setDrillholes] = useState<Drillhole[]>([]);
+  const [selectedDrillholeId, setSelectedDrillholeId] = useState<string | null>(
+    null,
+  );
   const [triangles, setTriangles] = useState<Triangle[]>([]);
   const [hasGeneratedTriangulation, setHasGeneratedTriangulation] =
     useState(false);
@@ -209,6 +212,7 @@ export default function PolygonConstructorPage() {
     );
     setTriangles([]);
     setHasGeneratedTriangulation(false);
+    setSelectedDrillholeId((current) => (current === id ? null : current));
   }
 
   function generateDrillholeTriangulation() {
@@ -275,8 +279,10 @@ export default function PolygonConstructorPage() {
             <DrillholeManager
               drillholes={drillholes}
               nextName={nextDrillholeName}
+              onSelect={setSelectedDrillholeId}
               onAdd={addDrillhole}
               onDelete={deleteDrillhole}
+              selectedDrillholeId={selectedDrillholeId}
             />
             <TriangulationControls
               drillholeCount={drillholes.length}
@@ -290,9 +296,11 @@ export default function PolygonConstructorPage() {
             <PolygonCanvas
               drillholes={drillholes}
               linkedDrillholeIds={linkedDrillholeIds}
+              selectedDrillholeId={selectedDrillholeId}
               method={method}
               onAddVertex={addVertex}
               onMoveDrillhole={moveDrillhole}
+              onSelectDrillhole={setSelectedDrillholeId}
               onMoveVertex={moveVertex}
               triangles={triangles}
               vertices={vertices}

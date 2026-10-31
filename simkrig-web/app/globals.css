@@ -184,7 +184,7 @@ input {
 
 .workspace-grid {
   display: grid;
-  grid-template-columns: minmax(218px, 0.78fr) minmax(360px, 2.2fr) minmax(260px, 0.94fr);
+  grid-template-columns: minmax(190px, 0.64fr) minmax(0, 3fr) minmax(220px, 0.74fr);
   gap: 14px;
   align-items: stretch;
 }
@@ -679,8 +679,10 @@ button.method-option:hover {
 
 .canvas-panel {
   display: flex;
-  min-height: 490px;
-  flex: 1;
+  width: 100%;
+  height: 780px;
+  min-height: 780px;
+  flex: 0 0 auto;
   flex-direction: column;
   overflow: hidden;
 }
@@ -721,6 +723,50 @@ button.method-option:hover {
   font-size: 9px;
 }
 
+.canvas-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14px;
+  min-width: 0;
+}
+
+.selected-drillhole-coordinates {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px 10px;
+  color: #b7c4c8;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 10px;
+}
+
+.selected-drillhole-coordinates strong {
+  color: #ffffff;
+  font-size: 11px;
+}
+
+.auto-fit-status {
+  display: flex;
+  min-height: 31px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 7px;
+  padding: 0 9px;
+  border: 1px solid #3c6062;
+  border-radius: 3px;
+  background: #122126;
+  color: #a6d9d3;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.auto-fit-status .scale-icon {
+  color: #80d8cf;
+}
+
 .canvas-scale {
   display: flex;
   align-items: center;
@@ -738,8 +784,9 @@ button.method-option:hover {
 
 .canvas-frame {
   position: relative;
-  min-height: 0;
-  flex: 1;
+  height: 650px;
+  min-height: 650px;
+  flex: 0 0 650px;
   margin: 17px 18px 10px 34px;
   border: 1px solid #28363d;
   background: #0a1217;
@@ -858,18 +905,18 @@ button.method-option:hover {
 
 .drillhole-halo {
   fill: #0a161c;
-  stroke: #56c8c0;
-  stroke-width: 1.7;
+  stroke: #84f5e8;
+  stroke-width: 2.5;
 }
 
 .drillhole-core {
-  fill: #a4eee4;
+  fill: #f0fffb;
 }
 
 .drillhole-crosshair {
   fill: none;
-  stroke: #56c8c0;
-  stroke-width: 1.4;
+  stroke: #a0fff2;
+  stroke-width: 2;
 }
 
 .drillhole-marker.is-linked .drillhole-halo {
@@ -885,18 +932,30 @@ button.method-option:hover {
 }
 
 .drillhole-label {
-  fill: #8eddd5;
+  fill: #e4fffa;
   font-family: var(--font-geist-mono), monospace;
-  font-size: 11px;
-  font-weight: 600;
+  font-size: 24px;
+  font-weight: 700;
   paint-order: stroke;
-  stroke: #0a1217;
-  stroke-width: 3px;
+  stroke: #03090d;
+  stroke-linejoin: round;
+  stroke-width: 5px;
   user-select: none;
 }
 
+.drillhole-marker:focus-visible .drillhole-halo {
+  stroke: #ffffff;
+  stroke-width: 3;
+}
+
 .drillhole-marker.is-linked .drillhole-label {
-  fill: #f0ce84;
+  fill: #ffe3a3;
+}
+
+.drillhole-marker.is-selected .drillhole-label {
+  fill: #ffffff;
+  font-size: 29px;
+  font-weight: 700;
 }
 
 .vertex-marker {
@@ -1401,11 +1460,7 @@ button.method-option:hover {
 
 @media (min-width: 1500px) {
   .workspace-grid {
-    grid-template-columns: minmax(240px, 0.78fr) minmax(450px, 2.2fr) minmax(290px, 0.94fr);
-  }
-
-  .canvas-panel {
-    min-height: min(58vh, 680px);
+    grid-template-columns: minmax(205px, 0.64fr) minmax(0, 3fr) minmax(235px, 0.74fr);
   }
 }
 
@@ -1416,7 +1471,7 @@ button.method-option:hover {
   }
 
   .workspace-grid {
-    grid-template-columns: minmax(210px, 0.8fr) minmax(340px, 1.7fr);
+    grid-template-columns: minmax(200px, 0.7fr) minmax(0, 1.8fr);
   }
 
   .polygon-info {
@@ -1481,16 +1536,28 @@ button.method-option:hover {
   }
 
   .left-workspace-column {
-    order: 0;
+    display: contents;
+  }
+
+  .polygon-toolbar {
+    order: 1;
   }
 
   .workspace-center {
-    order: 1;
+    order: 0;
+  }
+
+  .drillhole-manager {
+    order: 2;
+  }
+
+  .triangulation-controls {
+    order: 3;
   }
 
   .polygon-info {
     grid-column: auto;
-    order: 2;
+    order: 4;
   }
 
   .method-list {
@@ -1517,11 +1584,14 @@ button.method-option:hover {
   }
 
   .canvas-panel {
-    min-height: 390px;
+    height: auto;
+    min-height: 0;
   }
 
   .canvas-frame {
-    min-height: 310px;
+    height: min(60vh, 520px);
+    min-height: 360px;
+    flex-basis: auto;
     margin: 12px 12px 9px 25px;
   }
 
@@ -1558,5 +1628,167 @@ button.method-option:hover {
   .canvas-footer {
     padding: 0 9px;
     font-size: 7px;
+  }
+}
+
+.polygon-app .breadcrumb,
+.polygon-app .memory-indicator,
+.polygon-app .eyebrow,
+.polygon-app .intro-code,
+.polygon-app .section-index,
+.polygon-app .panel-heading h2 {
+  font-size: 12px;
+}
+
+.polygon-app .panel-heading p,
+.polygon-app .page-intro p,
+.polygon-app .method-option,
+.polygon-app .tool-button,
+.polygon-app .canvas-title-group h2,
+.polygon-app .summary-method > strong,
+.polygon-app .vertex-empty {
+  font-size: 13px;
+}
+
+.polygon-app .subsection-title h3,
+.polygon-app .dimension-inputs label,
+.polygon-app .vertex-row label,
+.polygon-app .drillhole-list-row strong,
+.polygon-app .linked-drillhole-row strong,
+.polygon-app .result-status strong {
+  font-size: 12px;
+}
+
+.polygon-app .subsection-title > span,
+.polygon-app .summary-label,
+.polygon-app .summary-vertex-count,
+.polygon-app .result-status p,
+.polygon-app .drillhole-list-row > div > span,
+.polygon-app .linked-drillhole-row > div > span,
+.polygon-app .triangulation-hint,
+.polygon-app .triangulation-ready,
+.polygon-app .triangulation-error,
+.polygon-app .helper-text,
+.polygon-app .toolbar-hint p,
+.polygon-app .vertex-row input,
+.polygon-app .input-with-unit input,
+.polygon-app .calculation-note,
+.polygon-app .triangle-result-row {
+  font-size: 11px;
+}
+
+.polygon-app .canvas-title-group p,
+.polygon-app .canvas-scale,
+.polygon-app .canvas-legend,
+.polygon-app .canvas-footer,
+.polygon-app .polygon-footer,
+.polygon-app .metric-unit,
+.polygon-app .metric-heading,
+.polygon-app .coming-soon {
+  font-size: 10px;
+}
+
+.polygon-app .axis-label,
+.polygon-app .canvas-coordinate-origin {
+  font-size: 9px;
+}
+
+.polygon-app .drillhole-list-row,
+.polygon-app .linked-drillhole-row {
+  min-height: 42px;
+}
+
+.polygon-app .drillhole-select-button {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.polygon-app .drillhole-select-button:hover strong,
+.polygon-app .drillhole-list-row.is-selected .drillhole-select-button strong {
+  color: #ffffff;
+}
+
+.polygon-app .drillhole-list-row.is-selected {
+  border-radius: 3px;
+  background: rgb(81 199 193 / 8%);
+}
+
+.polygon-app .metric-card > strong {
+  font-size: clamp(18px, 1.4vw, 23px);
+}
+
+.polygon-app .drillhole-manager-hint,
+.polygon-app .future-algorithm,
+.polygon-app .triangulation-algorithm,
+.polygon-app .triangulation-total-area > span:first-child,
+.polygon-app .triangle-result-measures small {
+  font-size: 9px;
+}
+
+.polygon-app .add-drillhole-button,
+.polygon-app .generate-triangulation-button,
+.polygon-app .link-drillhole-button {
+  font-size: 11px;
+}
+
+.polygon-app .auto-fit-status {
+  font-size: 11px;
+}
+
+.polygon-app .drillhole-list-symbol {
+  font-size: 20px;
+}
+
+@media (max-width: 700px) {
+  .polygon-app .memory-indicator {
+    font-size: 0;
+  }
+
+  .polygon-app .polygon-footer {
+    font-size: 8px;
+  }
+
+  .polygon-app .breadcrumb {
+    font-size: 8px;
+  }
+
+  .polygon-app .method-option {
+    font-size: 11px;
+  }
+
+  .polygon-app .canvas-toolbar {
+    gap: 6px;
+  }
+
+  .polygon-app .selected-drillhole-coordinates {
+    gap: 3px 6px;
+    font-size: 9px;
+  }
+
+  .polygon-app .selected-drillhole-coordinates strong {
+    font-size: 10px;
+  }
+
+  .polygon-app .auto-fit-status {
+    gap: 4px;
+    padding: 0 5px;
+    font-size: 9px;
+  }
+
+  .polygon-app .drillhole-label {
+    font-size: 52px;
+  }
+
+  .polygon-app .drillhole-marker.is-selected .drillhole-label {
+    font-size: 58px;
   }
 }
