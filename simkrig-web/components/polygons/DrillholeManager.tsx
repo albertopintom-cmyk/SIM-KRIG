@@ -1,28 +1,32 @@
 "use client";
 
 import { useState } from "react";
-import {
-  CANVAS_HEIGHT,
-  CANVAS_WIDTH,
-} from "@/lib/geometry/polygonTypes";
 import type { Drillhole } from "@/types/Drillhole";
+import DrillholeExcelImport from "./DrillholeExcelImport";
+import type { DrillholeImportResult, DrillholeImportSummary } from "@/types/DrillholeImport";
 
 type DrillholeManagerProps = {
   drillholes: readonly Drillhole[];
   nextName: string;
   selectedDrillholeId: string | null;
+  importedDrillholes: readonly Drillhole[];
+  importSummary: DrillholeImportSummary | null;
   onAdd: (coordinates: { x: number; y: number }) => void;
   onDelete: (id: string) => void;
   onSelect: (id: string) => void;
+  onImport: (fileName: string, result: DrillholeImportResult) => void;
 };
 
 export default function DrillholeManager({
   drillholes,
   nextName,
   selectedDrillholeId,
+  importedDrillholes,
+  importSummary,
   onAdd,
   onDelete,
   onSelect,
+  onImport,
 }: DrillholeManagerProps) {
   const [x, setX] = useState("500");
   const [y, setY] = useState("320");
@@ -32,11 +36,7 @@ export default function DrillholeManager({
     x.trim() !== "" &&
     y.trim() !== "" &&
     Number.isFinite(parsedX) &&
-    Number.isFinite(parsedY) &&
-    parsedX >= 0 &&
-    parsedX <= CANVAS_WIDTH &&
-    parsedY >= 0 &&
-    parsedY <= CANVAS_HEIGHT;
+    Number.isFinite(parsedY);
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -68,8 +68,6 @@ export default function DrillholeManager({
             <span className="input-with-unit">
               <input
                 aria-label="Coordenada X del nuevo sondaje"
-                max={CANVAS_WIDTH}
-                min={0}
                 onChange={(event) => setX(event.target.value)}
                 step="0.1"
                 type="number"
@@ -83,8 +81,6 @@ export default function DrillholeManager({
             <span className="input-with-unit">
               <input
                 aria-label="Coordenada Y del nuevo sondaje"
-                max={CANVAS_HEIGHT}
-                min={0}
                 onChange={(event) => setY(event.target.value)}
                 step="0.1"
                 type="number"
@@ -143,6 +139,12 @@ export default function DrillholeManager({
       <p className="drillhole-manager-hint">
         Puedes arrastrar los puntos directamente en el canvas para moverlos.
       </p>
+      <DrillholeExcelImport
+        drillholes={drillholes}
+        importedDrillholes={importedDrillholes}
+        onImport={onImport}
+        summary={importSummary}
+      />
     </section>
   );
 }

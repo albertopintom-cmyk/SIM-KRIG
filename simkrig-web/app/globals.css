@@ -575,6 +575,203 @@ button.method-option:hover {
   line-height: 1.5;
 }
 
+.drillhole-import {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid #24313a;
+}
+
+.visually-hidden-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+.import-excel-button {
+  display: flex;
+  width: 100%;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid #465666;
+  border-radius: 3px;
+  background: #18232c;
+  color: #d3e0e5;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.import-excel-button:hover:not(:disabled) {
+  border-color: #69a6ae;
+  background: #1d3038;
+}
+
+.import-excel-button:disabled {
+  cursor: progress;
+  opacity: 0.65;
+}
+
+.import-excel-button > span {
+  color: #9ac7c7;
+  font-size: 14px;
+}
+
+.drillhole-import-hint {
+  margin: 8px 0 0;
+  color: #87949b;
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.import-error {
+  margin: 9px 0 0;
+  padding: 8px;
+  border: 1px solid #754746;
+  border-radius: 3px;
+  background: rgb(110 45 42 / 20%);
+  color: #f0a49a;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.import-summary {
+  margin-top: 12px;
+  padding: 10px;
+  border: 1px solid #34434a;
+  border-radius: 3px;
+  background: #0c151b;
+}
+
+.import-summary-title {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.import-summary-title > strong {
+  color: #dbe5e7;
+  font-size: 11px;
+}
+
+.import-summary-title > span {
+  overflow: hidden;
+  color: #89bcb6;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.import-summary-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+  margin: 10px 0 0;
+}
+
+.import-summary-stats > div {
+  min-width: 0;
+  padding: 6px 5px;
+  border: 1px solid #25333a;
+  background: #111d23;
+}
+
+.import-summary-stats dt {
+  min-height: 24px;
+  color: #95a3a8;
+  font-size: 8px;
+  line-height: 1.35;
+}
+
+.import-summary-stats dd {
+  margin: 3px 0 0;
+  color: #e2ecec;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.import-summary-stats dd.has-invalid-rows {
+  color: #f0a17e;
+}
+
+.import-errors {
+  margin-top: 9px;
+  color: #e6b29d;
+  font-size: 9px;
+}
+
+.import-errors summary {
+  cursor: pointer;
+}
+
+.import-errors ul {
+  max-height: 120px;
+  margin: 7px 0 0;
+  padding-left: 17px;
+  overflow-y: auto;
+  color: #d9b4a7;
+  line-height: 1.5;
+}
+
+.import-preview {
+  margin-top: 14px;
+}
+
+.import-preview-table-wrap {
+  max-height: 250px;
+  overflow: auto;
+  border: 1px solid #2b3a42;
+}
+
+.import-preview-table {
+  width: 100%;
+  border-collapse: collapse;
+  color: #c5d0d4;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 9px;
+  text-align: right;
+}
+
+.import-preview-table th,
+.import-preview-table td {
+  padding: 7px 6px;
+  border-bottom: 1px solid #24323a;
+  white-space: nowrap;
+}
+
+.import-preview-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #17232b;
+  color: #9bb0b5;
+  font-size: 8px;
+}
+
+.import-preview-table thead th {
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.import-preview-table tbody th {
+  max-width: 90px;
+  overflow: hidden;
+  color: #8eddd5;
+  font-weight: 600;
+  text-align: left;
+  text-overflow: ellipsis;
+}
+
+.import-preview-table tbody tr:nth-child(even) {
+  background: rgb(255 255 255 / 2%);
+}
+
 .triangulation-controls {
   padding-bottom: 15px;
 }

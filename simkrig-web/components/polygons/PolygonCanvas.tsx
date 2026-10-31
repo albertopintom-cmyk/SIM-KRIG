@@ -83,31 +83,17 @@ export default function PolygonCanvas({
       const worldPoint = screenPoint.matrixTransform(matrix.inverse());
 
       return {
-        x: Math.max(0, Math.min(CANVAS_WIDTH, worldPoint.x)),
-        y: Math.max(
-          0,
-          Math.min(CANVAS_HEIGHT, CANVAS_HEIGHT - worldPoint.y),
-        ),
+        x: worldPoint.x,
+        y: CANVAS_HEIGHT - worldPoint.y,
       };
     }
 
     const bounds = svg.getBoundingClientRect();
     return {
-      x: Math.max(
-        0,
-        Math.min(
-          CANVAS_WIDTH,
-          ((event.clientX - bounds.left) / bounds.width) * CANVAS_WIDTH,
-        ),
-      ),
-      y: Math.max(
-        0,
-        Math.min(
-          CANVAS_HEIGHT,
-          CANVAS_HEIGHT -
-            ((event.clientY - bounds.top) / bounds.height) * CANVAS_HEIGHT,
-        ),
-      ),
+      x: ((event.clientX - bounds.left) / bounds.width) * CANVAS_WIDTH,
+      y:
+        CANVAS_HEIGHT -
+        ((event.clientY - bounds.top) / bounds.height) * CANVAS_HEIGHT,
     };
   }
 

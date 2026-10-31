@@ -9,6 +9,10 @@ import PolygonToolbar from "@/components/polygons/PolygonToolbar";
 import TriangulationControls from "@/components/polygons/TriangulationControls";
 import { generateTriangulation } from "@/lib/geometry/generateTriangulation";
 import type { Drillhole } from "@/types/Drillhole";
+import type {
+  DrillholeImportResult,
+  DrillholeImportSummary,
+} from "@/types/DrillholeImport";
 import type { InfluencePolygon } from "@/types/InfluencePolygon";
 import type { Triangle } from "@/types/Triangle";
 import {
@@ -47,6 +51,9 @@ export default function PolygonConstructorPage() {
   const [vertices, setVertices] = useState<Point[]>([]);
   const [rectangleSize, setRectangleSize] = useState(DEFAULT_RECTANGLE);
   const [drillholes, setDrillholes] = useState<Drillhole[]>([]);
+  const [importedDrillholes, setImportedDrillholes] = useState<Drillhole[]>([]);
+  const [importSummary, setImportSummary] =
+    useState<DrillholeImportSummary | null>(null);
   const [selectedDrillholeId, setSelectedDrillholeId] = useState<string | null>(
     null,
   );
@@ -180,21 +187,24 @@ export default function PolygonConstructorPage() {
     };
 
     setDrillholes((current) => [...current, drillhole]);
+    setImportSummary((current) =>
+      current
+        ? { ...current, totalDrillholes: drillholes.length + 1 }
+        : current,
+    );
     setNextDrillholeNumber((current) => current + 1);
     setTriangles([]);
     setHasGeneratedTriangulation(false);
   }
 
   function moveDrillhole(id: string, coordinates: { x: number; y: number }) {
-    const x = Math.max(0, Math.min(CANVAS_WIDTH, coordinates.x));
-    const y = Math.max(0, Math.min(CANVAS_HEIGHT, coordinates.y));
     setDrillholes((current) =>
       current.map((drillhole) =>
         drillhole.id === id
           ? {
               ...drillhole,
-              x: Number(x.toFixed(1)),
-              y: Number(y.toFixed(1)),
+              x: Number(coordinates.x.toFixed(1)),
+              y: Number(coordinates.y.toFixed(1)),
             }
           : drillhole,
       ),
@@ -210,6 +220,11 @@ export default function PolygonConstructorPage() {
     setLinkedDrillholeIds((current) =>
       current.filter((drillholeId) => drillholeId !== id),
     );
+    setImportSummary((current) =>
+      current
+        ? { ...current, totalDrillholes: Math.max(0, drillholes.length - 1) }
+        : current,
+    );
     setTriangles([]);
     setHasGeneratedTriangulation(false);
     setSelectedDrillholeId((current) => (current === id ? null : current));
@@ -219,6 +234,29 @@ export default function PolygonConstructorPage() {
     const result = generateTriangulation(drillholes);
     setTriangles(result);
     setHasGeneratedTriangulation(true);
+  }
+
+  function importDrillholes(
+    fileName: string,
+    result: DrillholeImportResult,
+  ) {
+    const imported = result.drillholes.map((drillhole) => ({
+      ...drillhole,
+      id: `drillhole-import-${crypto.randomUUID()}`,
+    }));
+
+    setDrillholes((current) => [...current, ...imported]);
+    setImportedDrillholes(imported);
+    setImportSummary({
+      fileName,
+      validRows: result.validRows,
+      invalidRows: result.invalidRows,
+      totalDrillholes: drillholes.length + imported.length,
+      errors: result.errors,
+    });
+    setSelectedDrillholeId(imported[0]?.id ?? null);
+    setTriangles([]);
+    setHasGeneratedTriangulation(false);
   }
 
   function toggleDrillholeLink(id: string) {
@@ -278,7 +316,10 @@ export default function PolygonConstructorPage() {
             />
             <DrillholeManager
               drillholes={drillholes}
+              importedDrillholes={importedDrillholes}
+              importSummary={importSummary}
               nextName={nextDrillholeName}
+              onImport={importDrillholes}
               onSelect={setSelectedDrillholeId}
               onAdd={addDrillhole}
               onDelete={deleteDrillhole}

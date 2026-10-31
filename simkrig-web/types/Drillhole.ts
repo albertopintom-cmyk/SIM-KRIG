@@ -3,4 +3,9 @@ export interface Drillhole {
   name: string;
   x: number;
   y: number;
+  z?: number;
+  depth?: number;
+  thickness?: number;
+  density?: number;
+  grade?: number;
 }
