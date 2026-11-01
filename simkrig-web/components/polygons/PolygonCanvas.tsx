@@ -17,21 +17,6 @@ import type { Triangle } from "@/types/Triangle";
 import DrillholeLayer from "./DrillholeLayer";
 import TriangulationLayer from "./TriangulationLayer";
 
-function isNearBounds(
-  point: { x: number; y: number },
-  bounds: NonNullable<ReturnType<typeof getCoordinateBounds>>,
-): boolean {
-  const marginX = Math.max((bounds.maxX - bounds.minX) * 0.1, 50);
-  const marginY = Math.max((bounds.maxY - bounds.minY) * 0.1, 50);
-
-  return (
-    point.x >= bounds.minX - marginX &&
-    point.x <= bounds.maxX + marginX &&
-    point.y >= bounds.minY - marginY &&
-    point.y <= bounds.maxY + marginY
-  );
-}
-
 type PolygonCanvasProps = {
   vertices: readonly Point[];
   drillholes: readonly Drillhole[];
@@ -64,30 +49,29 @@ export default function PolygonCanvas({
   const [dragViewBox, setDragViewBox] = useState<ViewBox | null>(null);
   const [aspectRatio, setAspectRatio] = useState(1000 / 650);
   const [viewportWidth, setViewportWidth] = useState(1000);
+  const [zoomExtentsRevision, setZoomExtentsRevision] = useState(0);
   const importedDrillholes = drillholes.filter(
     (drillhole) => drillhole.source === "excel",
   );
   const importedBounds = getCoordinateBounds(importedDrillholes);
   const fitDrillholes = importedBounds
-    ? drillholes.filter(
-        (drillhole) =>
-          drillhole.source === "excel" ||
-          isNearBounds(drillhole, importedBounds),
-      )
+    ? importedDrillholes
     : drillholes;
-  const fitVertices = importedBounds
-    ? vertices.filter((vertex) => isNearBounds(vertex, importedBounds))
-    : vertices;
+  const fitVertices = importedBounds ? [] : vertices;
   const autoFitViewBox = calculateWorkspaceExtents(
     fitDrillholes,
     fitVertices,
     aspectRatio,
   );
   const viewBox = dragViewBox ?? autoFitViewBox;
-  const importedMinX = importedBounds?.minX;
-  const importedMaxX = importedBounds?.maxX;
-  const importedMinY = importedBounds?.minY;
-  const importedMaxY = importedBounds?.maxY;
+  const fitBounds = getCoordinateBounds([
+    ...fitDrillholes,
+    ...fitVertices,
+  ]);
+  const minX = importedBounds?.minX ?? fitBounds?.minX;
+  const maxX = importedBounds?.maxX ?? fitBounds?.maxX;
+  const minY = importedBounds?.minY ?? fitBounds?.minY;
+  const maxY = importedBounds?.maxY ?? fitBounds?.maxY;
 
   useEffect(() => {
     const svg = svgRef.current;
@@ -110,19 +94,19 @@ export default function PolygonCanvas({
   useEffect(() => {
     if (
       process.env.NODE_ENV !== "development" ||
-      importedMinX === undefined ||
-      importedMaxX === undefined ||
-      importedMinY === undefined ||
-      importedMaxY === undefined
+      minX === undefined ||
+      maxX === undefined ||
+      minY === undefined ||
+      maxY === undefined
     ) {
       return;
     }
 
-    console.debug("[SIM-KRIG] Drillhole Auto-Fit", {
-      minX: importedMinX,
-      maxX: importedMaxX,
-      minY: importedMinY,
-      maxY: importedMaxY,
+    console.log({
+      minX,
+      maxX,
+      minY,
+      maxY,
       viewBox: {
         x: autoFitViewBox.x,
         y: autoFitViewBox.y,
@@ -131,16 +115,26 @@ export default function PolygonCanvas({
       },
     });
   }, [
-    drillholes,
-    importedMinX,
-    importedMaxX,
-    importedMinY,
-    importedMaxY,
+    minX,
+    maxX,
+    minY,
+    maxY,
     autoFitViewBox.x,
     autoFitViewBox.y,
     autoFitViewBox.width,
     autoFitViewBox.height,
+    zoomExtentsRevision,
   ]);
+
+  function handleZoomExtents() {
+    const bounds = svgRef.current?.getBoundingClientRect();
+    if (bounds && bounds.width > 0 && bounds.height > 0) {
+      setAspectRatio(bounds.width / bounds.height);
+      setViewportWidth(bounds.width);
+    }
+    setDragViewBox(null);
+    setZoomExtentsRevision((revision) => revision + 1);
+  }
 
   function getCanvasPoint(
     event: React.PointerEvent<SVGSVGElement>,
@@ -256,6 +250,13 @@ export default function PolygonCanvas({
             <span className="scale-icon" aria-hidden="true">⌗</span>
             AUTO-FIT · 10%
           </div>
+          <button
+            className="zoom-extents-button"
+            onClick={handleZoomExtents}
+            type="button"
+          >
+            Zoom Extents
+          </button>
         </div>
       </div>
 
@@ -272,6 +273,7 @@ export default function PolygonCanvas({
           onPointerUp={handlePointerEnd}
           preserveAspectRatio="xMidYMid meet"
           role="application"
+          data-zoom-extents-revision={zoomExtentsRevision}
           viewBox={`${viewBox.x} ${viewBox.y} ${viewBox.width} ${viewBox.height}`}
         >
           <defs>

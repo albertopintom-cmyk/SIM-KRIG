@@ -1,10 +1,13 @@
 "use client";
 
+import { useState } from "react";
+
 type TriangulationControlsProps = {
   drillholeCount: number;
   triangleCount: number;
   hasGenerated: boolean;
   onGenerate: () => void;
+  onClear: () => void;
 };
 
 export default function TriangulationControls({
@@ -12,7 +15,9 @@ export default function TriangulationControls({
   triangleCount,
   hasGenerated,
   onGenerate,
+  onClear,
 }: TriangulationControlsProps) {
+  const [isConfirmingClear, setIsConfirmingClear] = useState(false);
   const canGenerate = drillholeCount >= 3;
 
   return (
@@ -31,15 +36,51 @@ export default function TriangulationControls({
         <strong>Abanico + inserción</strong>
       </div>
 
-      <button
-        className="generate-triangulation-button"
-        disabled={!canGenerate}
-        onClick={onGenerate}
-        type="button"
-      >
-        <span aria-hidden="true">△</span>
-        Generar triangulación
-      </button>
+      <div className="triangulation-actions">
+        <button
+          className="generate-triangulation-button"
+          disabled={!canGenerate}
+          onClick={onGenerate}
+          type="button"
+        >
+          <span aria-hidden="true">△</span>
+          Generar triangulación
+        </button>
+        <button
+          className="clear-triangulation-button"
+          disabled={!hasGenerated && triangleCount === 0}
+          onClick={() => setIsConfirmingClear(true)}
+          type="button"
+        >
+          Clear Triangulation
+        </button>
+      </div>
+      {isConfirmingClear && (
+        <div
+          aria-labelledby="clear-triangulation-heading"
+          className="clear-triangulation-confirmation"
+          role="group"
+        >
+          <p id="clear-triangulation-heading">Clear triangulation?</p>
+          <div className="clear-triangulation-confirmation-actions">
+            <button
+              onClick={() => {
+                onClear();
+                setIsConfirmingClear(false);
+              }}
+              type="button"
+            >
+              Yes
+            </button>
+            <button
+              onClick={() => setIsConfirmingClear(false)}
+              type="button"
+            >
+              No
+            </button>
+          </div>
+        </div>
+      )}
       <p className="triangulation-hint">
         {canGenerate
           ? `${drillholeCount} sondajes disponibles para triangular.`

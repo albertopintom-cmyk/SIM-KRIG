@@ -53,7 +53,7 @@ export default function DrillholeLayer({
               ? "top"
               : "bottom"
           : null;
-        const markerRadius = 5.5 * screenScale;
+        const markerRadius = (isSelected ? 8 : 6) * screenScale;
         const edgeInset = 10 * screenScale;
         const x = isOutOfView
           ? Math.max(

@@ -108,7 +108,7 @@ export default function PolygonInfoPanel({
         </div>
         <div className="triangulation-total-area">
           <span>ÁREA TRIANGULADA TOTAL</span>
-          <strong>{triangles.length > 0 ? numberFormat.format(triangulatedArea) : "—"}</strong>
+          <strong>{numberFormat.format(triangulatedArea)}</strong>
           <span>m²</span>
         </div>
         {triangles.length > 0 && (

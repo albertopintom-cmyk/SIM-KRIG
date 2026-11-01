@@ -237,6 +237,11 @@ export default function PolygonConstructorPage() {
     setHasGeneratedTriangulation(true);
   }
 
+  function clearDrillholeTriangulation() {
+    setTriangles([]);
+    setHasGeneratedTriangulation(false);
+  }
+
   function importDrillholes(
     fileName: string,
     result: DrillholeImportResult,
@@ -330,6 +335,7 @@ export default function PolygonConstructorPage() {
             <TriangulationControls
               drillholeCount={drillholes.length}
               hasGenerated={hasGeneratedTriangulation}
+              onClear={clearDrillholeTriangulation}
               onGenerate={generateDrillholeTriangulation}
               triangleCount={triangles.length}
             />

@@ -804,20 +804,32 @@ button.method-option:hover {
   text-align: right;
 }
 
-.generate-triangulation-button {
+.triangulation-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 7px;
+}
+
+.generate-triangulation-button,
+.clear-triangulation-button {
   display: flex;
-  width: 100%;
+  min-width: 0;
   min-height: 37px;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  border: 1px solid rgb(229 168 75 / 42%);
+  padding: 5px 7px;
   border-radius: 3px;
-  background: rgb(229 168 75 / 10%);
-  color: #e6c47f;
   cursor: pointer;
   font-size: 10px;
   font-weight: 600;
+  line-height: 1.3;
+}
+
+.generate-triangulation-button {
+  border: 1px solid rgb(229 168 75 / 42%);
+  background: rgb(229 168 75 / 10%);
+  color: #e6c47f;
 }
 
 .generate-triangulation-button:hover:not(:disabled) {
@@ -825,13 +837,70 @@ button.method-option:hover {
   background: rgb(229 168 75 / 17%);
 }
 
-.generate-triangulation-button:disabled {
+.clear-triangulation-button {
+  border: 1px solid rgb(203 117 100 / 50%);
+  background: rgb(203 117 100 / 9%);
+  color: #e2aaa0;
+}
+
+.clear-triangulation-button:hover:not(:disabled) {
+  border-color: #ce8274;
+  background: rgb(203 117 100 / 17%);
+}
+
+.generate-triangulation-button:disabled,
+.clear-triangulation-button:disabled {
   cursor: not-allowed;
   opacity: 0.45;
 }
 
 .generate-triangulation-button > span {
   font-size: 13px;
+}
+
+.clear-triangulation-confirmation {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 9px;
+  padding: 9px;
+  border: 1px solid #6f5741;
+  border-radius: 3px;
+  background: #211b17;
+}
+
+.clear-triangulation-confirmation p {
+  margin: 0;
+  color: #ead9c5;
+  font-size: 10px;
+}
+
+.clear-triangulation-confirmation-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.clear-triangulation-confirmation-actions button {
+  min-width: 42px;
+  min-height: 28px;
+  border: 1px solid #685746;
+  border-radius: 3px;
+  background: #30261e;
+  color: #f0dfc8;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.clear-triangulation-confirmation-actions button:first-child {
+  border-color: #5a8065;
+  background: #1c3025;
+  color: #c4e6cc;
+}
+
+.clear-triangulation-confirmation-actions button:hover {
+  filter: brightness(1.2);
 }
 
 .triangulation-hint {
@@ -962,6 +1031,30 @@ button.method-option:hover {
 
 .auto-fit-status .scale-icon {
   color: #80d8cf;
+}
+
+.zoom-extents-button {
+  min-height: 31px;
+  padding: 0 10px;
+  border: 1px solid #536a55;
+  border-radius: 3px;
+  background: #19251d;
+  color: #d7edbd;
+  cursor: pointer;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.zoom-extents-button:hover {
+  border-color: #9cc56c;
+  background: #253524;
+}
+
+.zoom-extents-button:focus-visible {
+  outline: 2px solid #b8df84;
+  outline-offset: 2px;
 }
 
 .canvas-scale {
@@ -1938,6 +2031,7 @@ button.method-option:hover {
 
 .polygon-app .add-drillhole-button,
 .polygon-app .generate-triangulation-button,
+.polygon-app .clear-triangulation-button,
 .polygon-app .link-drillhole-button {
   font-size: 11px;
 }
