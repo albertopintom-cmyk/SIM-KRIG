@@ -82,7 +82,7 @@ export async function importDrillholesFromExcel(
     header: 1,
     defval: null,
     raw: true,
-    blankrows: true,
+    blankrows: false,
   });
 
   if (rows.length === 0) {
@@ -131,8 +131,6 @@ export async function importDrillholesFromExcel(
     const row = rows[index];
     const rowNumber = index + 1;
     if (isEmptyRow(row)) {
-      invalidRows += 1;
-      errors.push(`Fila ${rowNumber}: está vacía.`);
       continue;
     }
 

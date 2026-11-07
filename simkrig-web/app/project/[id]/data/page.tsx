@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import ProjectDataFiles from "@/components/project/ProjectDataFiles";
 
 async function getProject(id: string) {
   "use cache";
@@ -19,11 +20,9 @@ async function getProject(id: string) {
 }
 
 async function getProjectFiles(id: string) {
-  "use cache";
-
   const { data: files, error } = await supabase
     .from("project_files")
-    .select("file_name, file_type, uploaded_at")
+    .select("id, file_name, file_type, uploaded_at")
     .eq("project_id", id)
     .order("uploaded_at", { ascending: false });
 
@@ -97,28 +96,7 @@ async function ProjectDataContent({
           </button>
         </header>
 
-        <section className="mt-12">
-          <h2 className="text-2xl font-semibold">Archivos del Proyecto</h2>
-
-          {files && files.length > 0 ? (
-            <ul className="mt-6 divide-y divide-slate-800 rounded-xl border border-slate-800 bg-slate-900">
-              {files.map((file, index) => (
-                <li
-                  className="grid gap-2 p-5 sm:grid-cols-3"
-                  key={`${file.file_name}-${file.uploaded_at}-${index}`}
-                >
-                  <p className="font-medium">{file.file_name}</p>
-                  <p className="text-slate-300">{file.file_type}</p>
-                  <p className="text-sm text-slate-400">{file.uploaded_at}</p>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="mt-6 rounded-xl border border-dashed border-slate-700 px-6 py-12 text-center text-slate-400">
-              No existen archivos cargados
-            </p>
-          )}
-        </section>
+        <ProjectDataFiles projectId={project.id} initialFiles={files ?? []} />
       </div>
     </main>
   );
