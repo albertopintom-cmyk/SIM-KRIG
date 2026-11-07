@@ -1,6 +1,16 @@
 import { supabase } from "@/lib/supabase";
 
 export default async function TestSupabasePage() {
+  const envAudit = {
+    url: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    urlLength: process.env.NEXT_PUBLIC_SUPABASE_URL?.length ?? 0,
+    urlStartsWithHttps:
+      process.env.NEXT_PUBLIC_SUPABASE_URL?.startsWith("https://") ?? false,
+    keyExists: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    keyLength:
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.length ?? 0,
+  };
+
   let projects;
   let queryError: { message: string; name?: string; stack?: string } | null =
     null;
@@ -43,6 +53,7 @@ export default async function TestSupabasePage() {
   return (
     <main>
       <h1>SIM-KRIG - Test Supabase</h1>
+      <pre>{JSON.stringify(envAudit, null, 2)}</pre>
       <p>URL: {process.env.NEXT_PUBLIC_SUPABASE_URL}</p>
 
       {exceptionDetails ? (
