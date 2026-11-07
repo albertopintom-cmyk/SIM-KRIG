@@ -7,6 +7,7 @@ import type {
   DrillholeImportResult,
   ImportedDrillhole,
 } from "@/types/DrillholeImport";
+import type { DrillholeInsert } from "@/types/DrillholeRecord";
 
 type ProjectFile = {
   id: string;
@@ -152,16 +153,29 @@ export default function ProjectDataFiles({
       return;
     }
 
-    const { error: drillholesError } = await supabase.from("drillholes").insert(
-      preview.result.drillholes.map((drillhole) => ({
+    const drillholes: DrillholeInsert[] = preview.result.drillholes.map(
+      (drillhole) => ({
         project_id: projectId,
-        project_file_id: projectFile.id,
+        source_file_id: projectFile.id,
         drillhole_id: drillhole.name,
         easting: drillhole.x,
         northing: drillhole.y,
         ...(drillhole.z !== undefined ? { elevation: drillhole.z } : {}),
-      })),
+        ...(drillhole.depth !== undefined
+          ? { total_depth: drillhole.depth }
+          : {}),
+        ...(drillhole.thickness !== undefined
+          ? { thickness: drillhole.thickness }
+          : {}),
+        ...(drillhole.density !== undefined
+          ? { density: drillhole.density }
+          : {}),
+        ...(drillhole.grade !== undefined ? { grade: drillhole.grade } : {}),
+      }),
     );
+    const { error: drillholesError } = await supabase
+      .from("drillholes")
+      .insert(drillholes);
 
     if (drillholesError) {
       const { error: cleanupError } = await supabase
