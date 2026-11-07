@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 
 export default async function Home() {
@@ -41,12 +42,12 @@ export default async function Home() {
                   <p className="mt-5 text-sm text-slate-300">
                     Estado: <span className="font-medium">{project.status}</span>
                   </p>
-                  <button
+                  <Link
                     className="mt-6 self-start rounded-md border border-cyan-400 px-5 py-2 text-sm font-semibold text-cyan-300 transition hover:bg-cyan-400 hover:text-slate-950"
-                    type="button"
+                    href={`/project/${project.id}`}
                   >
                     Entrar
-                  </button>
+                  </Link>
                 </article>
               ))}
             </div>
