@@ -1,21 +1,45 @@
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 
+async function getProject(id: string) {
+  "use cache";
+
+  const { data: project, error } = await supabase
+    .from("projects")
+    .select("id, name")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return project;
+}
+
+async function getProjectFiles(id: string) {
+  "use cache";
+
+  const { data: files, error } = await supabase
+    .from("project_files")
+    .select("file_name, file_type, uploaded_at")
+    .eq("project_id", id)
+    .order("uploaded_at", { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  return files;
+}
+
 export default async function ProjectDataPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const { data: project, error: projectError } = await supabase
-    .from("projects")
-    .select("id, name")
-    .eq("id", id)
-    .maybeSingle();
-
-  if (projectError) {
-    throw projectError;
-  }
+  const project = await getProject(id);
 
   if (!project) {
     return (
@@ -33,15 +57,7 @@ export default async function ProjectDataPage({
     );
   }
 
-  const { data: files, error: filesError } = await supabase
-    .from("project_files")
-    .select("file_name, file_type, uploaded_at")
-    .eq("project_id", id)
-    .order("uploaded_at", { ascending: false });
-
-  if (filesError) {
-    throw filesError;
-  }
+  const files = await getProjectFiles(id);
 
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-16 text-slate-100">

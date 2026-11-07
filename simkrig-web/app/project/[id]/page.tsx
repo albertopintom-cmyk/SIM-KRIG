@@ -10,12 +10,9 @@ const stages = [
   "Reportes",
 ];
 
-export default async function ProjectPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = await params;
+async function getProject(id: string) {
+  "use cache";
+
   const { data: project, error } = await supabase
     .from("projects")
     .select("id, name, description, status")
@@ -25,6 +22,17 @@ export default async function ProjectPage({
   if (error) {
     throw error;
   }
+
+  return project;
+}
+
+export default async function ProjectPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const project = await getProject(id);
 
   if (!project) {
     return (
