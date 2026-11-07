@@ -72,14 +72,24 @@ export default async function ProjectPage({
             ETAPAS DEL PROYECTO
           </h2>
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {stages.map((stage) => (
-              <article
-                className="rounded-xl border border-slate-800 bg-slate-900 p-6"
-                key={stage}
-              >
-                <h3 className="text-lg font-semibold">{stage}</h3>
-              </article>
-            ))}
+            {stages.map((stage) =>
+              stage === "Datos" ? (
+                <Link
+                  className="rounded-xl border border-slate-800 bg-slate-900 p-6 transition hover:border-cyan-400"
+                  href={`/project/${project.id}/data`}
+                  key={stage}
+                >
+                  <h3 className="text-lg font-semibold">{stage}</h3>
+                </Link>
+              ) : (
+                <article
+                  className="rounded-xl border border-slate-800 bg-slate-900 p-6"
+                  key={stage}
+                >
+                  <h3 className="text-lg font-semibold">{stage}</h3>
+                </article>
+              ),
+            )}
           </div>
         </section>
       </div>
