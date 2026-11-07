@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 
@@ -33,7 +34,19 @@ async function getProjectFiles(id: string) {
   return files;
 }
 
-export default async function ProjectDataPage({
+export default function ProjectDataPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  return (
+    <Suspense fallback={null}>
+      <ProjectDataContent params={params} />
+    </Suspense>
+  );
+}
+
+async function ProjectDataContent({
   params,
 }: {
   params: Promise<{ id: string }>;
