@@ -1,14 +1,18 @@
 import Link from "next/link";
-import { connection } from "next/server";
 import { supabase } from "@/lib/supabase";
 
-export default async function Home() {
-  await connection();
-
+async function getProjects() {
+  "use cache";
   const { data: projects } = await supabase
     .from("projects")
     .select("id, name, description, status")
     .order("created_at", { ascending: false });
+
+  return projects;
+}
+
+export default async function Home() {
+  const projects = await getProjects();
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100">
