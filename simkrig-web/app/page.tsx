@@ -1,70 +1,61 @@
-import Link from "next/link";
+import { supabase } from "@/lib/supabase";
 
-export default function Home() {
-  const modules = [
-    "Polígonos de Influencia",
-    "Cálculo de Áreas",
-    "Potencias",
-    "Volúmenes",
-    "Densidades",
-    "Recursos Minerales",
-    "Leyes",
-    "Finos",
-    "Ley Media",
-    "Ley de Corte",
-    "Curvas Tonelaje-Ley",
-  ];
+export default async function Home() {
+  const { data: projects } = await supabase
+    .from("projects")
+    .select("id, name, description, status")
+    .order("created_at", { ascending: false });
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white">
-      <div className="max-w-7xl mx-auto px-6 py-16">
+    <main className="min-h-screen bg-slate-950 text-slate-100">
+      <div className="mx-auto max-w-6xl px-6 py-16 sm:py-20">
+        <header className="flex flex-col items-center text-center">
+          <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-400">
+            SIM-KRIG
+          </p>
+          <h1 className="mt-4 text-3xl font-bold tracking-tight sm:text-5xl">
+            Plataforma de Evaluación de Recursos Minerales
+          </h1>
+          <button
+            className="mt-8 rounded-lg bg-cyan-400 px-8 py-4 text-lg font-semibold text-slate-950 transition hover:bg-cyan-300"
+            type="button"
+          >
+            Nuevo Proyecto
+          </button>
+        </header>
 
-        <h1 className="text-5xl font-bold text-center">
-          SIM-KRIG
-        </h1>
+        <section className="mt-16">
+          <h2 className="text-2xl font-semibold">Mis Proyectos</h2>
 
-        <p className="text-center text-slate-300 mt-4 mb-12">
-          Plataforma de Simulación y Estimación de Recursos Minerales
-        </p>
-
-        <h2 className="text-3xl font-semibold mb-8">
-          Módulos Metodológicos
-        </h2>
-
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-
-          {modules.map((module, index) => {
-            const isAvailable = index === 0;
-            const Card = (
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
-                <div className="text-yellow-400 text-2xl mb-4">
-                  {isAvailable ? "⌗" : "🚧"}
-                </div>
-
-                <h3 className="font-semibold text-xl">{module}</h3>
-
-                <p className="text-slate-400 mt-2">
-                  {isAvailable ? "Abrir constructor" : "Próximamente"}
-                </p>
-              </div>
-            );
-
-            return isAvailable ? (
-              <Link
-                aria-label="Abrir el módulo Polígonos de Influencia"
-                className="transition-transform hover:-translate-y-1"
-                href="/modules/polygons"
-                key={module}
-              >
-                {Card}
-              </Link>
-            ) : (
-              <div key={module}>{Card}</div>
-            );
-          })}
-
-        </div>
-
+          {projects && projects.length > 0 ? (
+            <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              {projects.map((project) => (
+                <article
+                  className="flex flex-col rounded-xl border border-slate-800 bg-slate-900 p-6"
+                  key={project.id}
+                >
+                  <h3 className="text-xl font-semibold">{project.name}</h3>
+                  <p className="mt-3 flex-1 text-sm leading-6 text-slate-400">
+                    {project.description}
+                  </p>
+                  <p className="mt-5 text-sm text-slate-300">
+                    Estado: <span className="font-medium">{project.status}</span>
+                  </p>
+                  <button
+                    className="mt-6 self-start rounded-md border border-cyan-400 px-5 py-2 text-sm font-semibold text-cyan-300 transition hover:bg-cyan-400 hover:text-slate-950"
+                    type="button"
+                  >
+                    Entrar
+                  </button>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-6 rounded-xl border border-dashed border-slate-700 px-6 py-12 text-center text-slate-400">
+              No existen proyectos registrados
+            </p>
+          )}
+        </section>
       </div>
     </main>
   );
