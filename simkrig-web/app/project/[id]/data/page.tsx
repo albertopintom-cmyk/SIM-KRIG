@@ -27,6 +27,7 @@ async function getProjectFiles(id: string) {
     .order("uploaded_at", { ascending: false });
 
   if (error) {
+    console.error(error);
     throw error;
   }
 

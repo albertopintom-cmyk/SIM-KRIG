@@ -27,6 +27,9 @@ type ExcelPreview = {
   result: DrillholeImportResult;
 };
 
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 const numberFormat = new Intl.NumberFormat("es-CL", {
   maximumFractionDigits: 2,
 });
@@ -133,21 +136,33 @@ export default function ProjectDataFiles({
       return;
     }
 
+    if (!UUID_PATTERN.test(projectId)) {
+      setErrorMessage(
+        `No se puede registrar el archivo: el ID del proyecto no es un UUID válido (${projectId}).`,
+      );
+      return;
+    }
+
     setErrorMessage(null);
     setSuccessMessage(null);
     setIsSaving(true);
 
+    const payload = {
+      project_id: projectId,
+      file_name: preview.fileName,
+      file_type: preview.fileType,
+    };
+
+    console.log("PROJECT_FILE_PAYLOAD", payload);
+
     const { data: projectFile, error: fileError } = await supabase
       .from("project_files")
-      .insert({
-        project_id: projectId,
-        file_name: preview.fileName,
-        file_type: preview.fileType,
-      })
+      .insert(payload)
       .select("id, file_name, file_type, uploaded_at")
       .single();
 
     if (fileError) {
+      console.error(fileError);
       setErrorMessage(`No se pudo registrar el archivo: ${fileError.message}`);
       setIsSaving(false);
       return;
@@ -182,6 +197,10 @@ export default function ProjectDataFiles({
         .from("project_files")
         .delete()
         .eq("id", projectFile.id);
+
+      if (cleanupError) {
+        console.error(cleanupError);
+      }
 
       setErrorMessage(
         cleanupError
