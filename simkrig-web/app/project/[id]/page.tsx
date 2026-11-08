@@ -7,6 +7,7 @@ const stages = [
   "Tablas",
   "Visualización",
   "Bloques",
+  "Ley de Corte",
   "Geoestadística",
   "Recursos",
   "Reportes",
@@ -97,10 +98,11 @@ async function ProjectContent({
             {stages.map((stage) =>
               stage === "Datos" ||
               stage === "Visualización" ||
-              stage === "Bloques" ? (
+              stage === "Bloques" ||
+              stage === "Ley de Corte" ? (
                 <Link
                   className="rounded-xl border border-slate-800 bg-slate-900 p-6 transition hover:border-cyan-400"
-                  href={`/project/${project.id}/${stage === "Datos" ? "data" : stage === "Visualización" ? "visualization" : "blocks"}`}
+                  href={`/project/${project.id}/${stage === "Datos" ? "data" : stage === "Visualización" ? "visualization" : stage === "Bloques" ? "blocks" : "cutoff"}`}
                   key={stage}
                 >
                   <h3 className="text-lg font-semibold">{stage}</h3>
