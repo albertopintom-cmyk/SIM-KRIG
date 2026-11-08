@@ -89,12 +89,12 @@ async function ProjectDataContent({
             </p>
             <h1 className="mt-3 text-3xl font-bold">{project.name}</h1>
           </div>
-          <button
+          <Link
             className="rounded-lg bg-cyan-400 px-6 py-3 font-semibold text-slate-950 transition hover:bg-cyan-300"
-            type="button"
+            href="#excel-import"
           >
             Cargar Excel
-          </button>
+          </Link>
         </header>
 
         <ProjectDataFiles projectId={project.id} initialFiles={files ?? []} />
