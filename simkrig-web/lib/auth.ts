@@ -10,5 +10,8 @@ export function isValidUsername(username: string) {
 }
 
 export function usernameToAuthEmail(username: string) {
-  return `${normalizeUsername(username)}@${AUTH_EMAIL_DOMAIN}`;
+  const normalizedUsername = normalizeUsername(username);
+  return normalizedUsername === "admin"
+    ? "albertopintom@gmail.com"
+    : `${normalizedUsername}@${AUTH_EMAIL_DOMAIN}`;
 }
