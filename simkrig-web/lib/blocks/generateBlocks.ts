@@ -115,32 +115,104 @@ function average(values: readonly (number | null)[]) {
 }
 
 function getVariables(
+  area: number,
   thickness: number | null,
   density: number | null,
   grade: number | null,
 ): BlockVariableInsert[] {
-  return [
+  const variables: BlockVariableInsert[] = [
     {
       variable_name: "Potencia",
       variation_type: "continuous",
       value: thickness,
       unit: "m",
-      calculation_method: "Promedio de los cuatro sondajes vecinos",
+      calculation_method: "mean_of_four_neighboring_drillholes",
     },
     {
       variable_name: "Densidad",
       variation_type: "continuous",
       value: density,
       unit: "t/m³",
-      calculation_method: "Promedio de los cuatro sondajes vecinos",
+      calculation_method: "mean_of_four_neighboring_drillholes",
     },
     {
       variable_name: "Ley",
       variation_type: "continuous",
       value: grade,
       unit: "%",
-      calculation_method: "Promedio de los cuatro sondajes vecinos",
+      calculation_method: "mean_of_four_neighboring_drillholes",
     },
+  ];
+
+  return addDerivedBlockVariables(variables, area);
+}
+
+export function addDerivedBlockVariables(
+  variables: readonly BlockVariableInsert[],
+  area: number | null,
+): BlockVariableInsert[] {
+  if (area !== null && (!Number.isFinite(area) || area < 0)) {
+    throw new Error(
+      "No se pueden calcular variables derivadas: el área del bloque debe ser un valor finito no negativo.",
+    );
+  }
+
+  const values = new Map(
+    variables.map((variable) => [variable.variable_name, variable.value]),
+  );
+  const thickness = values.get("Potencia") ?? null;
+  const density = values.get("Densidad") ?? null;
+  const grade = values.get("Ley") ?? null;
+  const volume =
+    area !== null && thickness !== null ? area * thickness : null;
+  const tonnage =
+    volume !== null && density !== null ? volume * density : null;
+  const fineMetal =
+    tonnage !== null && grade !== null ? (tonnage * grade) / 100 : null;
+  const derivedVariables: BlockVariableInsert[] = [
+    {
+      variable_name: "Volumen",
+      variation_type: "continuous",
+      value: volume,
+      unit: "m³",
+      calculation_method: "area_x_thickness",
+    },
+    {
+      variable_name: "Tonelaje",
+      variation_type: "continuous",
+      value: tonnage,
+      unit: "t",
+      calculation_method: "volume_x_density",
+    },
+    {
+      variable_name: "Metal Fino",
+      variation_type: "continuous",
+      value: fineMetal,
+      unit: "t",
+      calculation_method: "tonnage_x_grade",
+    },
+  ];
+
+  for (const variable of [...variables, ...derivedVariables]) {
+    if (
+      variable.value !== null &&
+      (!Number.isFinite(variable.value) || variable.value < 0)
+    ) {
+      throw new Error(
+        `No se puede generar bloques: la variable ${variable.variable_name} contiene un valor inválido o negativo.`,
+      );
+    }
+  }
+
+  return [
+    ...variables.filter(
+      (variable) =>
+        !derivedVariables.some(
+          (derivedVariable) =>
+            derivedVariable.variable_name === variable.variable_name,
+        ),
+    ),
+    ...derivedVariables,
   ];
 }
 
@@ -255,12 +327,18 @@ export function generateBlocks(
       const northWidth =
         northingAxis.coordinates[northingIndex + 1]! -
         northingAxis.coordinates[northingIndex]!;
+      const area = eastWidth * northWidth;
 
       blocks.push({
         block_name: `block-${northingIndex + 1}-${eastingIndex + 1}`,
         geometry,
-        area: eastWidth * northWidth,
-        variables: getVariables(avgThickness, avgDensity, avgGrade),
+        area,
+        variables: getVariables(
+          area,
+          avgThickness,
+          avgDensity,
+          avgGrade,
+        ),
       });
     }
   }

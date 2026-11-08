@@ -5,6 +5,8 @@ import { loadBlocks, type LoadedEstimationBlock } from "@/lib/blocks/loadBlocks"
 import type { BlockVariable } from "@/types/BlockVariable";
 
 type LoadState = "loading" | "empty" | "available" | "error";
+type SortKey = "block_name" | "area" | "Potencia" | "Densidad" | "Ley";
+type SortDirection = "ascending" | "descending";
 
 type BlockMapProps = {
   projectId: string;
@@ -23,6 +25,12 @@ type ProjectedBlock = {
   points: string;
 };
 
+type MetricSummary = {
+  average: number | null;
+  minimum: number | null;
+  maximum: number | null;
+};
+
 const SVG_WIDTH = 1000;
 const SVG_HEIGHT = 600;
 const PADDING = 48;
@@ -30,6 +38,50 @@ const PADDING = 48;
 const numberFormat = new Intl.NumberFormat("es-CL", {
   maximumFractionDigits: 2,
 });
+
+function getVariable(block: LoadedEstimationBlock, name: string) {
+  return block.variables.find((variable) => variable.variable_name === name);
+}
+
+function getVariableValue(block: LoadedEstimationBlock, name: string) {
+  return getVariable(block, name)?.value ?? null;
+}
+
+function summarizeMetric(
+  blocks: readonly LoadedEstimationBlock[],
+  valueName: string,
+  weightName: string,
+): MetricSummary {
+  const values = blocks
+    .map((block) => getVariableValue(block, valueName))
+    .filter((value): value is number => value !== null);
+  const weighted = blocks.reduce(
+    (result, block) => {
+      const value = getVariableValue(block, valueName);
+      const weight =
+        weightName === "Área"
+          ? block.area
+          : getVariableValue(block, weightName);
+      if (value === null || weight === null || weight <= 0) {
+        return result;
+      }
+      return {
+        weightedSum: result.weightedSum + value * weight,
+        weightSum: result.weightSum + weight,
+      };
+    },
+    { weightedSum: 0, weightSum: 0 },
+  );
+
+  return {
+    average:
+      weighted.weightSum > 0
+        ? weighted.weightedSum / weighted.weightSum
+        : null,
+    minimum: values.length > 0 ? Math.min(...values) : null,
+    maximum: values.length > 0 ? Math.max(...values) : null,
+  };
+}
 
 function getBounds(blocks: readonly LoadedEstimationBlock[]): Bounds {
   return blocks.flatMap((block) => block.geometry).reduce(
@@ -62,10 +114,6 @@ function getVariableOptions(blocks: readonly LoadedEstimationBlock[]) {
   );
 }
 
-function findBlockVariable(block: LoadedEstimationBlock, name: string) {
-  return block.variables.find((variable) => variable.variable_name === name);
-}
-
 function interpolateColor(value: number, minimum: number, maximum: number) {
   const blue = [59, 130, 246];
   const yellow = [250, 204, 21];
@@ -85,34 +133,85 @@ function interpolateColor(value: number, minimum: number, maximum: number) {
 
 function formatValue(value: number | null | undefined, unit = "") {
   return value === null || value === undefined
-    ? "Sin dato"
+    ? "—"
     : `${numberFormat.format(value)}${unit ? ` ${unit}` : ""}`;
 }
 
-function BlockTooltip({ block }: { block: LoadedEstimationBlock }) {
+function BlockDetails({ block }: { block: LoadedEstimationBlock }) {
   return (
-    <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
-      <div>
-        <dt className="text-xs uppercase tracking-wide text-slate-400">Bloque</dt>
-        <dd className="mt-1 break-all font-semibold text-slate-100">
-          {block.block_name}
-        </dd>
-      </div>
-      <div>
-        <dt className="text-xs uppercase tracking-wide text-slate-400">Área</dt>
-        <dd className="mt-1 text-slate-100">{formatValue(block.area, "m²")}</dd>
-      </div>
-      {block.variables.map((variable) => (
-        <div key={variable.id}>
+    <aside
+      aria-label={`Detalles del bloque ${block.block_name}`}
+      className="rounded-xl border border-cyan-900 bg-slate-900 p-5"
+    >
+      <h3 className="text-lg font-semibold">Bloque seleccionado</h3>
+      <dl className="mt-4 space-y-4">
+        <div>
           <dt className="text-xs uppercase tracking-wide text-slate-400">
-            {variable.variable_name}
+            Bloque
           </dt>
-          <dd className="mt-1 text-slate-100">
-            {formatValue(variable.value, variable.unit)}
+          <dd className="mt-1 break-all font-semibold text-slate-100">
+            {block.block_name}
           </dd>
         </div>
-      ))}
-    </dl>
+        <div>
+          <dt className="text-xs uppercase tracking-wide text-slate-400">
+            Área
+          </dt>
+          <dd className="mt-1 text-slate-100">
+            {formatValue(block.area, "m²")}
+          </dd>
+        </div>
+        {["Potencia", "Densidad", "Ley"].map((name) => {
+          const variable = getVariable(block, name);
+          return (
+            <div key={name}>
+              <dt className="text-xs uppercase tracking-wide text-slate-400">
+                {name}
+              </dt>
+              <dd className="mt-1 text-slate-100">
+                {formatValue(variable?.value, variable?.unit)}
+              </dd>
+            </div>
+          );
+        })}
+        <div>
+          <dt className="text-xs uppercase tracking-wide text-slate-400">
+            Coordenadas de vértices (Este, Norte)
+          </dt>
+          <dd className="mt-2 space-y-1 text-sm text-slate-200">
+            {block.geometry.map((vertex, index) => (
+              <p key={`${vertex.easting}-${vertex.northing}-${index}`}>
+                V{index + 1}: {numberFormat.format(vertex.easting)},{" "}
+                {numberFormat.format(vertex.northing)}
+              </p>
+            ))}
+          </dd>
+        </div>
+      </dl>
+    </aside>
+  );
+}
+
+function SummaryMetric({
+  label,
+  summary,
+  unit,
+}: {
+  label: string;
+  summary: MetricSummary;
+  unit: string;
+}) {
+  return (
+    <article className="rounded-xl border border-slate-800 bg-slate-900 p-4">
+      <h3 className="text-sm font-medium text-slate-400">{label}</h3>
+      <p className="mt-2 text-2xl font-semibold">
+        {formatValue(summary.average, unit)}
+      </p>
+      <p className="mt-2 text-xs text-slate-400">
+        Mín {formatValue(summary.minimum, unit)} · Máx{" "}
+        {formatValue(summary.maximum, unit)}
+      </p>
+    </article>
   );
 }
 
@@ -124,7 +223,10 @@ export default function BlockMap({
   const [state, setState] = useState<LoadState>("loading");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [activeVariableName, setActiveVariableName] = useState("");
-  const [hoveredBlockId, setHoveredBlockId] = useState<string | null>(null);
+  const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
+  const [sortKey, setSortKey] = useState<SortKey>("block_name");
+  const [sortDirection, setSortDirection] =
+    useState<SortDirection>("ascending");
 
   useEffect(() => {
     const controller = new AbortController();
@@ -140,6 +242,9 @@ export default function BlockMap({
           return;
         }
         setBlocks(loadedBlocks);
+        setSelectedBlockId((current) =>
+          loadedBlocks.some((block) => block.id === current) ? current : null,
+        );
         setState(loadedBlocks.length > 0 ? "available" : "empty");
       } catch (error) {
         if (!isActive) {
@@ -170,29 +275,32 @@ export default function BlockMap({
   const selectedVariable = variableOptions.find(
     (variable) => variable.variable_name === selectedVariableName,
   );
-  const variableRange = blocks.reduce(
-    (range, block) => {
-      const value = findBlockVariable(
-        block,
-        selectedVariableName ?? "",
-      )?.value;
-      return value === null || value === undefined
-        ? range
-        : {
-            minimum: Math.min(range.minimum, value),
-            maximum: Math.max(range.maximum, value),
-            count: range.count + 1,
-          };
-    },
+  const variableValues = blocks
+    .map(
+      (block) =>
+        block.variables.find(
+          (variable) => variable.variable_name === selectedVariableName,
+        )?.value,
+    )
+    .filter((value): value is number => value !== null && value !== undefined);
+  const variableRange = variableValues.reduce(
+    (range, value) => ({
+      minimum: Math.min(range.minimum, value),
+      maximum: Math.max(range.maximum, value),
+    }),
     {
       minimum: Number.POSITIVE_INFINITY,
       maximum: Number.NEGATIVE_INFINITY,
-      count: 0,
     },
   );
-  const minimum = variableRange.count > 0 ? variableRange.minimum : null;
-  const maximum = variableRange.count > 0 ? variableRange.maximum : null;
+  const minimum = variableValues.length > 0 ? variableRange.minimum : null;
+  const maximum = variableValues.length > 0 ? variableRange.maximum : null;
   const totalArea = blocks.reduce((total, block) => total + block.area, 0);
+  const globalSummary = {
+    thickness: summarizeMetric(blocks, "Potencia", "Área"),
+    density: summarizeMetric(blocks, "Densidad", "Volumen"),
+    grade: summarizeMetric(blocks, "Ley", "Tonelaje"),
+  };
 
   const projectedBlocks = useMemo<ProjectedBlock[]>(() => {
     if (blocks.length === 0) {
@@ -223,7 +331,46 @@ export default function BlockMap({
     }));
   }, [blocks]);
 
-  const hoveredBlock = blocks.find((block) => block.id === hoveredBlockId);
+  const selectedBlock = blocks.find((block) => block.id === selectedBlockId);
+
+  const sortedBlocks = useMemo(() => {
+    return [...blocks].sort((left, right) => {
+      let comparison = 0;
+      if (sortKey === "block_name") {
+        comparison = left.block_name.localeCompare(right.block_name, "es");
+      } else {
+        const leftValue =
+          sortKey === "area" ? left.area : getVariableValue(left, sortKey);
+        const rightValue =
+          sortKey === "area" ? right.area : getVariableValue(right, sortKey);
+        if (leftValue === null) {
+          comparison = rightValue === null ? 0 : 1;
+        } else if (rightValue === null) {
+          comparison = -1;
+        } else {
+          comparison = leftValue - rightValue;
+        }
+      }
+      return sortDirection === "ascending" ? comparison : -comparison;
+    });
+  }, [blocks, sortDirection, sortKey]);
+
+  function changeSort(nextSortKey: SortKey) {
+    if (sortKey === nextSortKey) {
+      setSortDirection((direction) =>
+        direction === "ascending" ? "descending" : "ascending",
+      );
+      return;
+    }
+    setSortKey(nextSortKey);
+    setSortDirection("ascending");
+  }
+
+  function sortLabel(label: string, key: SortKey) {
+    const indicator =
+      sortKey === key ? (sortDirection === "ascending" ? " ↑" : " ↓") : "";
+    return `${label}${indicator}`;
+  }
 
   return (
     <section
@@ -271,7 +418,7 @@ export default function BlockMap({
 
       {state === "available" && (
         <>
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
             <article className="rounded-xl border border-slate-800 bg-slate-900 p-4">
               <p className="text-sm text-slate-400">Cantidad bloques</p>
               <p className="mt-2 text-2xl font-semibold">{blocks.length}</p>
@@ -282,18 +429,21 @@ export default function BlockMap({
                 {formatValue(totalArea, "m²")}
               </p>
             </article>
-            <article className="rounded-xl border border-slate-800 bg-slate-900 p-4">
-              <p className="text-sm text-slate-400">Valor mínimo</p>
-              <p className="mt-2 text-2xl font-semibold">
-                {formatValue(minimum, selectedVariable?.unit)}
-              </p>
-            </article>
-            <article className="rounded-xl border border-slate-800 bg-slate-900 p-4">
-              <p className="text-sm text-slate-400">Valor máximo</p>
-              <p className="mt-2 text-2xl font-semibold">
-                {formatValue(maximum, selectedVariable?.unit)}
-              </p>
-            </article>
+            <SummaryMetric
+              label="Potencia promedio global"
+              summary={globalSummary.thickness}
+              unit="m"
+            />
+            <SummaryMetric
+              label="Densidad promedio global"
+              summary={globalSummary.density}
+              unit="t/m³"
+            />
+            <SummaryMetric
+              label="Ley promedio global"
+              summary={globalSummary.grade}
+              unit="%"
+            />
           </div>
 
           <div className="mt-5 flex flex-wrap items-end justify-between gap-4">
@@ -324,50 +474,68 @@ export default function BlockMap({
             </p>
           </div>
 
-          <div className="mt-4 overflow-hidden rounded-xl border border-slate-800 bg-slate-950">
-            <svg
-              aria-label={`Mapa temático de ${blocks.length} bloques`}
-              className="block h-auto max-h-[75vh] min-h-80 w-full"
-              preserveAspectRatio="xMidYMid meet"
-              role="img"
-              viewBox={`0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`}
-            >
-              <rect fill="#080d12" height={SVG_HEIGHT} width={SVG_WIDTH} />
-              {projectedBlocks.map(({ block, points }) => {
-                const value = findBlockVariable(
-                  block,
-                  selectedVariableName ?? "",
-                )?.value;
-                const fill =
-                  value === null ||
-                  value === undefined ||
-                  minimum === null ||
-                  maximum === null
-                    ? "#475569"
-                    : interpolateColor(value, minimum, maximum);
+          <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
+            <div className="min-w-0 overflow-hidden rounded-xl border border-slate-800 bg-slate-950">
+              <svg
+                aria-label={`Mapa temático de ${blocks.length} bloques`}
+                className="block h-auto max-h-[75vh] min-h-80 w-full"
+                preserveAspectRatio="xMidYMid meet"
+                role="img"
+                viewBox={`0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`}
+              >
+                <rect fill="#080d12" height={SVG_HEIGHT} width={SVG_WIDTH} />
+                {projectedBlocks.map(({ block, points }) => {
+                  const value = getVariableValue(
+                    block,
+                    selectedVariableName ?? "",
+                  );
+                  const isSelected = selectedBlockId === block.id;
+                  const fill =
+                    value === null || minimum === null || maximum === null
+                      ? "#475569"
+                      : interpolateColor(value, minimum, maximum);
 
-                return (
-                  <polygon
-                    aria-label={`Bloque ${block.block_name}`}
-                    className="cursor-pointer stroke-slate-950 transition-opacity hover:opacity-80 focus:stroke-white"
-                    fill={fill}
-                    key={block.id}
-                    onBlur={() => setHoveredBlockId(null)}
-                    onFocus={() => setHoveredBlockId(block.id)}
-                    onMouseEnter={() => setHoveredBlockId(block.id)}
-                    onMouseLeave={() => setHoveredBlockId(null)}
-                    points={points}
-                    strokeWidth="2"
-                    tabIndex={0}
-                  >
-                    <title>
-                      {block.block_name} · {selectedVariable?.variable_name}:{" "}
-                      {formatValue(value, selectedVariable?.unit)}
-                    </title>
-                  </polygon>
-                );
-              })}
-            </svg>
+                  return (
+                    <polygon
+                      aria-label={`Seleccionar bloque ${block.block_name}`}
+                      aria-pressed={isSelected}
+                      className="cursor-pointer transition-opacity hover:opacity-80 focus:stroke-white"
+                      fill={fill}
+                      key={block.id}
+                      onClick={() => setSelectedBlockId(block.id)}
+                      onFocus={() => setSelectedBlockId(block.id)}
+                      points={points}
+                      stroke={isSelected ? "#f8fafc" : "#080d12"}
+                      strokeWidth={isSelected ? 5 : 2}
+                      tabIndex={0}
+                    >
+                      <title>
+                        {block.block_name} · Área:{" "}
+                        {formatValue(block.area, "m²")} · Potencia:{" "}
+                        {formatValue(
+                          getVariableValue(block, "Potencia"),
+                          "m",
+                        )}{" "}
+                        · Densidad:{" "}
+                        {formatValue(
+                          getVariableValue(block, "Densidad"),
+                          "t/m³",
+                        )}{" "}
+                        · Ley: {formatValue(getVariableValue(block, "Ley"), "%")}
+                      </title>
+                    </polygon>
+                  );
+                })}
+              </svg>
+            </div>
+            {selectedBlock ? (
+              <BlockDetails block={selectedBlock} />
+            ) : (
+              <aside className="rounded-xl border border-slate-800 bg-slate-900 p-5 text-sm text-slate-400">
+                Selecciona un bloque en el mapa o en la tabla para consultar
+                sus detalles y vértices.
+              </aside>
+            )}
           </div>
 
           {minimum !== null && maximum !== null && selectedVariable && (
@@ -396,11 +564,82 @@ export default function BlockMap({
             </div>
           )}
 
-          {hoveredBlock && (
-            <div className="mt-4 rounded-xl border border-cyan-900 bg-slate-900 p-5">
-              <BlockTooltip block={hoveredBlock} />
+          <section aria-labelledby="block-table-heading" className="mt-8">
+            <h3 className="text-xl font-semibold" id="block-table-heading">
+              Tabla de bloques
+            </h3>
+            <div className="mt-4 overflow-x-auto rounded-xl border border-slate-800">
+              <table className="min-w-full divide-y divide-slate-800 text-left text-sm">
+                <thead className="bg-slate-950 text-slate-300">
+                  <tr>
+                    {(
+                      [
+                        ["block_name", "Bloque"],
+                        ["area", "Área (m²)"],
+                        ["Potencia", "Potencia (m)"],
+                        ["Densidad", "Densidad (t/m³)"],
+                        ["Ley", "Ley (%)"],
+                      ] as const
+                    ).map(([key, label]) => (
+                      <th
+                        className="whitespace-nowrap px-4 py-3"
+                        key={key}
+                        scope="col"
+                      >
+                        <button
+                          aria-label={`Ordenar por ${label}`}
+                          className="font-semibold hover:text-cyan-300"
+                          onClick={() => changeSort(key)}
+                          type="button"
+                        >
+                          {sortLabel(label, key)}
+                        </button>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800">
+                  {sortedBlocks.map((block) => (
+                    <tr
+                      aria-selected={selectedBlockId === block.id}
+                      className={`cursor-pointer ${
+                        selectedBlockId === block.id
+                          ? "bg-cyan-950/50"
+                          : "bg-slate-900/70 hover:bg-slate-800"
+                      }`}
+                      key={block.id}
+                      onClick={() => setSelectedBlockId(block.id)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          setSelectedBlockId(block.id);
+                        }
+                      }}
+                      tabIndex={0}
+                    >
+                      <th
+                        className="whitespace-nowrap px-4 py-3 font-medium"
+                        scope="row"
+                      >
+                        {block.block_name}
+                      </th>
+                      <td className="whitespace-nowrap px-4 py-3">
+                        {formatValue(block.area)}
+                      </td>
+                      {["Potencia", "Densidad", "Ley"].map((name) => (
+                        <td
+                          className="whitespace-nowrap px-4 py-3"
+                          key={name}
+                        >
+                          {formatValue(getVariableValue(block, name))}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          )}
+          </section>
         </>
       )}
     </section>
