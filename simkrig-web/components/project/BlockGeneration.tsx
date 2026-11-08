@@ -8,7 +8,7 @@ import {
   generateBlocks,
   type DrillholeForBlock,
 } from "@/lib/blocks/generateBlocks";
-import { loadBlocks } from "@/lib/blocks/loadBlocks";
+import { loadPersistedBlocks } from "@/lib/blocks/loadPersistedBlocks";
 import { saveBlocks } from "@/lib/blocks/saveBlocks";
 import { saveVariables } from "@/lib/blocks/saveVariables";
 import type { EstimationBlockInsert } from "@/types/EstimationBlock";
@@ -140,6 +140,10 @@ export default function BlockGeneration({
   const [reloadToken, setReloadToken] = useState(0);
   const [state, setState] = useState<LoadState>("generating");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [persistedSummary, setPersistedSummary] = useState<{
+    blockCount: number;
+    variableCount: number;
+  } | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -150,7 +154,7 @@ export default function BlockGeneration({
       setErrorMessage(null);
 
       try {
-        const existingBlocks = await loadBlocks(
+        const existingBlocks = await loadPersistedBlocks(
           projectId,
           controller.signal,
         );
@@ -224,8 +228,44 @@ export default function BlockGeneration({
 
     setState("saving");
     setErrorMessage(null);
+    setPersistedSummary(null);
     try {
-      await saveBlocks(projectId, previewBlocks);
+      const savedBlockCount = await saveBlocks(projectId, previewBlocks);
+      const persistedBlocks = await loadPersistedBlocks(projectId);
+      const persistedVariableCount = persistedBlocks.reduce(
+        (total, block) => total + block.variables.length,
+        0,
+      );
+      const expectedVariableCount = previewBlocks.reduce(
+        (total, block) => total + block.variables.length,
+        0,
+      );
+
+      console.log("PERSISTED BLOCK COUNT:", persistedBlocks.length);
+      console.log("PERSISTED VARIABLE COUNT:", persistedVariableCount);
+      console.log("PERSISTENCE VERIFICATION:", {
+        projectId,
+        rpcBlockCount: savedBlockCount,
+        queriedBlockCount: persistedBlocks.length,
+        expectedBlockCount: previewBlocks.length,
+        queriedVariableCount: persistedVariableCount,
+        expectedVariableCount,
+      });
+
+      if (
+        savedBlockCount !== previewBlocks.length ||
+        persistedBlocks.length !== previewBlocks.length ||
+        persistedVariableCount !== expectedVariableCount
+      ) {
+        throw new Error(
+          `El RPC informó ${savedBlockCount} bloques; la consulta encontró ${persistedBlocks.length} bloques y ${persistedVariableCount} variables (esperados: ${previewBlocks.length} bloques y ${expectedVariableCount} variables).`,
+        );
+      }
+
+      setPersistedSummary({
+        blockCount: persistedBlocks.length,
+        variableCount: persistedVariableCount,
+      });
       setReloadToken((current) => current + 1);
       setState("available");
     } catch (error) {
@@ -331,9 +371,22 @@ export default function BlockGeneration({
       {state === "available" && (
         <>
           <div className="mt-5 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-emerald-500/30 bg-emerald-950/20 p-4">
-            <p className="text-slate-200">
-              Los bloques están guardados y listos para reutilizarse.
-            </p>
+            <div className="text-slate-200">
+              {persistedSummary ? (
+                <>
+                  <p>
+                    ✅ {persistedSummary.blockCount} bloques guardados
+                    correctamente
+                  </p>
+                  <p className="mt-1">
+                    ✅ {persistedSummary.variableCount} variables guardadas
+                    correctamente
+                  </p>
+                </>
+              ) : (
+                <p>Los bloques están guardados y listos para reutilizarse.</p>
+              )}
+            </div>
             <Link
               className="rounded-lg border border-cyan-400 px-4 py-2 text-sm font-semibold text-cyan-300 transition hover:bg-cyan-400 hover:text-slate-950"
               href={`/project/${projectId}/visualization`}

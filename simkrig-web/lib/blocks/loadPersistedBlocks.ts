@@ -49,7 +49,7 @@ function isEstimationBlock(value: unknown): value is EstimationBlock {
   );
 }
 
-export async function loadBlocks(
+export async function loadPersistedBlocks(
   projectId: string,
   signal?: AbortSignal,
 ): Promise<LoadedEstimationBlock[]> {

@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { loadBlocks, type LoadedEstimationBlock } from "@/lib/blocks/loadBlocks";
+import {
+  loadPersistedBlocks,
+  type LoadedEstimationBlock,
+} from "@/lib/blocks/loadPersistedBlocks";
 import type { BlockVariable } from "@/types/BlockVariable";
 
 type LoadState = "loading" | "empty" | "available" | "error";
@@ -237,7 +240,10 @@ export default function BlockMap({
       setErrorMessage(null);
 
       try {
-        const loadedBlocks = await loadBlocks(projectId, controller.signal);
+        const loadedBlocks = await loadPersistedBlocks(
+          projectId,
+          controller.signal,
+        );
         if (!isActive) {
           return;
         }
