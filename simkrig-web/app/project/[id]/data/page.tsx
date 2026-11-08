@@ -43,7 +43,15 @@ export default function ProjectDataPage({
   searchParams: Promise<{ reset?: string }>;
 }) {
   return (
-    <Suspense fallback={null}>
+    <Suspense
+      fallback={
+        <main className="min-h-screen bg-slate-950 px-6 py-16 text-slate-100">
+          <div className="mx-auto max-w-5xl">
+            <p className="text-slate-400">Cargando datos del proyecto…</p>
+          </div>
+        </main>
+      }
+    >
       <ProjectDataContent params={params} searchParams={searchParams} />
     </Suspense>
   );

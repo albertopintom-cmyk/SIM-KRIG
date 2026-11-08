@@ -24,7 +24,15 @@ export default function ProjectVisualizationPage({
   params: Promise<{ id: string }>;
 }) {
   return (
-    <Suspense fallback={null}>
+    <Suspense
+      fallback={
+        <main className="min-h-screen bg-slate-950 px-6 py-16 text-slate-100">
+          <div className="mx-auto max-w-5xl">
+            <p className="text-slate-400">Cargando visualización…</p>
+          </div>
+        </main>
+      }
+    >
       <ProjectVisualizationContent params={params} />
     </Suspense>
   );
