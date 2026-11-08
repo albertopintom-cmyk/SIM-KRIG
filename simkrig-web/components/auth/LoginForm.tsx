@@ -23,6 +23,17 @@ export default function LoginForm() {
     }
 
     const normalizedUsername = normalizeUsername(username);
+    console.log("USERNAME_RAW:", username);
+    console.log("USERNAME_NORMALIZED:", normalizedUsername);
+    console.log(
+      "USERNAME_VALID:",
+      isValidUsername(normalizedUsername),
+    );
+    console.log(
+      "AUTH_EMAIL:",
+      usernameToAuthEmail(normalizedUsername),
+    );
+
     if (!isValidUsername(normalizedUsername)) {
       setErrorMessage("Ingresa un usuario válido.");
       return;
