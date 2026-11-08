@@ -1,8 +1,17 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import GroupCreationForm from "@/components/admin/GroupCreationForm";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
-export default async function AdminGroupsPage() {
+export default function AdminGroupsPage() {
+  return (
+    <Suspense fallback={null}>
+      <AdminGroupsContent />
+    </Suspense>
+  );
+}
+
+async function AdminGroupsContent() {
   const supabase = await createServerSupabaseClient();
   const {
     data: { user },
