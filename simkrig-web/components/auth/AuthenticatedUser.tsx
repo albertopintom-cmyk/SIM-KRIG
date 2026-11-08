@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import SignOutButton from "@/components/auth/SignOutButton";
 
@@ -37,7 +38,17 @@ export default async function AuthenticatedUser() {
             <span className="ml-2 text-slate-500">({profile.role})</span>
           )}
         </p>
-        <SignOutButton />
+        <div className="flex items-center gap-4">
+          {profile?.role === "admin" && (
+            <Link
+              className="text-sm font-medium text-cyan-300 hover:text-cyan-200"
+              href="/admin/groups"
+            >
+              Administración
+            </Link>
+          )}
+          <SignOutButton />
+        </div>
       </div>
     </header>
   );
