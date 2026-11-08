@@ -4,13 +4,11 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import BlockMap from "@/components/project/BlockMap";
 import {
-  addDerivedBlockVariables,
   generateBlocks,
   type DrillholeForBlock,
 } from "@/lib/blocks/generateBlocks";
 import { loadPersistedBlocks } from "@/lib/blocks/loadPersistedBlocks";
 import { saveBlocks } from "@/lib/blocks/saveBlocks";
-import { saveVariables } from "@/lib/blocks/saveVariables";
 import type { EstimationBlockInsert } from "@/types/EstimationBlock";
 import { supabase } from "@/lib/supabase";
 
@@ -163,22 +161,6 @@ export default function BlockGeneration({
         }
 
         if (existingBlocks.length > 0) {
-          const derivedVariables = existingBlocks.flatMap((block) =>
-            addDerivedBlockVariables(block.variables, block.area).map(
-              (variable) => ({
-                ...variable,
-                block_id: block.id,
-              }),
-            ),
-          ).filter((variable) =>
-            ["Volumen", "Tonelaje", "Metal Fino"].includes(
-              variable.variable_name,
-            ),
-          );
-          await saveVariables(derivedVariables);
-          if (!isActive) {
-            return;
-          }
           setState("available");
           return;
         }
