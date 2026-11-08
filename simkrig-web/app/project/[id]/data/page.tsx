@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import ProjectDataFiles from "@/components/project/ProjectDataFiles";
+import ResetProjectButton from "@/components/project/ResetProjectButton";
 
 async function getProject(id: string) {
   "use cache";
@@ -36,22 +37,27 @@ async function getProjectFiles(id: string) {
 
 export default function ProjectDataPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ reset?: string }>;
 }) {
   return (
     <Suspense fallback={null}>
-      <ProjectDataContent params={params} />
+      <ProjectDataContent params={params} searchParams={searchParams} />
     </Suspense>
   );
 }
 
 async function ProjectDataContent({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ reset?: string }>;
 }) {
   const { id } = await params;
+  const { reset } = await searchParams;
   const project = await getProject(id);
 
   if (!project) {
@@ -89,13 +95,25 @@ async function ProjectDataContent({
             </p>
             <h1 className="mt-3 text-3xl font-bold">{project.name}</h1>
           </div>
-          <Link
-            className="rounded-lg bg-cyan-400 px-6 py-3 font-semibold text-slate-950 transition hover:bg-cyan-300"
-            href="#excel-import"
-          >
-            Cargar Excel
-          </Link>
+          <div className="flex flex-col gap-3 sm:items-end">
+            <Link
+              className="rounded-lg bg-cyan-400 px-6 py-3 text-center font-semibold text-slate-950 transition hover:bg-cyan-300"
+              href="#excel-import"
+            >
+              Cargar Excel
+            </Link>
+            <ResetProjectButton projectId={project.id} />
+          </div>
         </header>
+
+        {reset === "success" && (
+          <p
+            className="mt-6 rounded-lg border border-emerald-500/40 bg-emerald-950/40 p-4 text-emerald-200"
+            role="status"
+          >
+            Proyecto reiniciado correctamente
+          </p>
+        )}
 
         <ProjectDataFiles projectId={project.id} initialFiles={files ?? []} />
       </div>
