@@ -1,7 +1,14 @@
 -- SIM-KRIG block persistence setup.
 -- Run this entire script in the Supabase SQL Editor for the project used by the app.
 
-begin;
+do $$
+begin
+  if to_regclass('public.projects') is null then
+    raise exception
+      'Prerequisite missing: public.projects is not present in this Supabase project';
+  end if;
+end;
+$$;
 
 create table if not exists public.estimation_blocks (
   id uuid primary key default gen_random_uuid(),
@@ -278,9 +285,7 @@ revoke all on function public.save_estimation_blocks(uuid, jsonb) from public;
 grant execute on function public.save_estimation_blocks(uuid, jsonb)
   to anon, authenticated;
 
-commit;
-
--- Post-creation validation. Run after the transaction above completes.
+-- Post-creation validation.
 select to_regclass('public.estimation_blocks');
 
 select to_regclass('public.block_variables');
