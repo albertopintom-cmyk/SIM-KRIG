@@ -55,6 +55,7 @@ export function calculateCutoff(
   const results = blocks.map((block): CutoffBlockResult => {
     const grade = getVariableValue(block, "Ley");
     const blockTonnage = getVariableValue(block, "Tonelaje");
+    const blockFineMetal = getVariableValue(block, "Metal Fino");
 
     if (grade !== null && grade < 0) {
       throw new Error(`El bloque ${block.block_name} tiene una ley negativa.`);
@@ -62,6 +63,11 @@ export function calculateCutoff(
     if (blockTonnage !== null && blockTonnage < 0) {
       throw new Error(
         `El bloque ${block.block_name} tiene un tonelaje negativo.`,
+      );
+    }
+    if (blockFineMetal !== null && blockFineMetal < 0) {
+      throw new Error(
+        `El bloque ${block.block_name} tiene metal fino negativo.`,
       );
     }
 
@@ -79,9 +85,9 @@ export function calculateCutoff(
           : 0;
     const recoverableFineMetal =
       classification === "mineral" &&
-      grade !== null &&
-      blockTonnage !== null
-        ? (blockTonnage * grade) / 100
+      blockTonnage !== null &&
+      blockFineMetal !== null
+        ? blockFineMetal
         : classification === "estéril"
           ? 0
           : null;
@@ -133,6 +139,15 @@ export function calculateCutoff(
         : null,
     recoverableFineMetal,
   };
+}
+
+export function getMaximumCutoffGrade(
+  blocks: readonly LoadedEstimationBlock[],
+): number {
+  return blocks.reduce((maximum, block) => {
+    const grade = getVariableValue(block, "Ley");
+    return grade === null ? maximum : Math.max(maximum, grade);
+  }, 0);
 }
 
 export function calculateCutoffCurve(

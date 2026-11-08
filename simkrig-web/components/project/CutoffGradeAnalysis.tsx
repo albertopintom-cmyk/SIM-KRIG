@@ -4,10 +4,13 @@ import { useEffect, useMemo, useState } from "react";
 import {
   calculateCutoff,
   calculateCutoffCurve,
+  getMaximumCutoffGrade,
   type CutoffAnalysis,
+  type CutoffCurvePoint,
 } from "@/lib/cutoff/calculateCutoff";
 import { loadPersistedBlocks } from "@/lib/blocks/loadPersistedBlocks";
 import type { LoadedEstimationBlock } from "@/lib/blocks/loadPersistedBlocks";
+import TonnageGradeCurveChart from "@/components/project/TonnageGradeCurveChart";
 
 type LoadState = "loading" | "empty" | "available" | "error";
 
@@ -18,7 +21,7 @@ type CutoffGradeAnalysisProps = {
 const numberFormat = new Intl.NumberFormat("es-CL", {
   maximumFractionDigits: 2,
 });
-const comparisonCutoffs = [0.5, 1, 1.5, 2] as const;
+const CUTOFF_STEP = 0.01;
 
 function formatValue(value: number | null, unit = "") {
   return value === null
@@ -26,21 +29,31 @@ function formatValue(value: number | null, unit = "") {
     : `${numberFormat.format(value)}${unit ? ` ${unit}` : ""}`;
 }
 
+function getCutoffGrades(maximumCutoffGrade: number): number[] {
+  const stepCount = Math.floor(maximumCutoffGrade / CUTOFF_STEP);
+  const grades = Array.from(
+    { length: stepCount + 1 },
+    (_, index) => Number((index * CUTOFF_STEP).toFixed(2)),
+  );
+  if (
+    grades[grades.length - 1] !== maximumCutoffGrade &&
+    maximumCutoffGrade - (grades[grades.length - 1] ?? 0) > 1e-9
+  ) {
+    grades.push(maximumCutoffGrade);
+  }
+  return grades;
+}
+
 function getCutoffAnalysis(
   blocks: readonly LoadedEstimationBlock[],
-  cutoffInput: string,
+  cutoffGrade: number,
 ):
   | { analysis: CutoffAnalysis; error: null }
   | { analysis: null; error: string | null } {
-  if (cutoffInput.trim() === "") {
-    return { analysis: null, error: "Ingresa una ley de corte para calcular." };
-  }
-
-  const cutoffGrade = Number(cutoffInput);
   if (!Number.isFinite(cutoffGrade) || cutoffGrade < 0) {
     return {
       analysis: null,
-      error: "Ingresa una ley de corte numérica y no negativa.",
+      error: "La ley de corte debe ser un número no negativo.",
     };
   }
 
@@ -88,7 +101,7 @@ export default function CutoffGradeAnalysis({
   const [blocks, setBlocks] = useState<LoadedEstimationBlock[]>([]);
   const [state, setState] = useState<LoadState>("loading");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [cutoffInput, setCutoffInput] = useState("");
+  const [cutoffGrade, setCutoffGrade] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -130,13 +143,64 @@ export default function CutoffGradeAnalysis({
     };
   }, [projectId]);
 
-  const result = useMemo(
-    () => getCutoffAnalysis(blocks, cutoffInput),
-    [blocks, cutoffInput],
+  const curveResult = useMemo((): {
+    maximumCutoffGrade: number;
+    points: CutoffCurvePoint[];
+    error: string | null;
+  } => {
+    try {
+      const maximumCutoffGrade = getMaximumCutoffGrade(blocks);
+      return {
+        maximumCutoffGrade,
+        points: calculateCutoffCurve(
+          blocks,
+          getCutoffGrades(maximumCutoffGrade),
+        ),
+        error: null,
+      };
+    } catch (error) {
+      return {
+        maximumCutoffGrade: 0,
+        points: [],
+        error:
+          error instanceof Error
+            ? error.message
+            : "No se pudo calcular la curva tonelaje-ley.",
+      };
+    }
+  }, [blocks]);
+  const selectedCutoffGrade = Math.min(
+    cutoffGrade,
+    curveResult.maximumCutoffGrade,
   );
-  const comparison = useMemo(
-    () => calculateCutoffCurve(blocks, comparisonCutoffs),
-    [blocks],
+  const result = useMemo(
+    () => getCutoffAnalysis(blocks, selectedCutoffGrade),
+    [blocks, selectedCutoffGrade],
+  );
+  const curveSeries = useMemo(
+    () => [
+      {
+        id: "tonnage",
+        label: "Tonelaje recuperable",
+        axis: "left" as const,
+        color: "#22d3ee",
+        values: curveResult.points.map((point) => ({
+          cutoffGrade: point.cutoffGrade,
+          value: point.recoverableTonnage,
+        })),
+      },
+      {
+        id: "average-grade",
+        label: "Ley media recuperable",
+        axis: "right" as const,
+        color: "#fbbf24",
+        values: curveResult.points.map((point) => ({
+          cutoffGrade: point.cutoffGrade,
+          value: point.recoverableAverageGrade,
+        })),
+      },
+    ],
+    [curveResult.points],
   );
 
   return (
@@ -156,16 +220,22 @@ export default function CutoffGradeAnalysis({
           recuperables a partir de las variables persistidas del proyecto.
         </p>
         <label className="mt-6 flex max-w-sm flex-col gap-2 text-sm text-slate-300">
-          Ley de corte (%)
+          Ley de corte ({numberFormat.format(cutoffGrade)} %)
           <input
-            className="rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-lg text-slate-100 focus:border-cyan-400 focus:outline-none"
+            aria-label="Ley de Corte (%)"
+            className="accent-cyan-400"
+            disabled={curveResult.maximumCutoffGrade === 0}
+            max={curveResult.maximumCutoffGrade}
             min="0"
-            onChange={(event) => setCutoffInput(event.target.value)}
-            placeholder="Ej.: 0,5"
-            step="any"
-            type="number"
-            value={cutoffInput}
+            onChange={(event) => setCutoffGrade(Number(event.target.value))}
+            step={CUTOFF_STEP}
+            type="range"
+            value={selectedCutoffGrade}
           />
+          <span className="flex justify-between text-xs text-slate-500">
+            <span>0,00 %</span>
+            <span>{formatValue(curveResult.maximumCutoffGrade, "%")}</span>
+          </span>
         </label>
       </header>
 
@@ -193,90 +263,31 @@ export default function CutoffGradeAnalysis({
 
       {state === "available" && (
         <>
-          {result.error && (
+          {(result.error || curveResult.error) && (
             <p
               className="mt-5 rounded-xl border border-amber-500/40 bg-amber-950/30 p-4 text-sm text-amber-200"
               role="status"
             >
-              {result.error}
+              {result.error ?? curveResult.error}
             </p>
           )}
 
-          {result.analysis && (
+          {result.analysis && !curveResult.error && (
             <>
-              <section
-                aria-label="Comparación de leyes de corte"
-                className="mt-8"
-              >
-                <h3 className="text-xl font-semibold">
-                  Comparación por ley de corte
-                </h3>
-                <p className="mt-1 text-sm text-slate-400">
-                  Cada fila es un punto estructurado para una futura curva
-                  tonelaje-ley.
-                </p>
-                <div className="mt-4 overflow-x-auto rounded-xl border border-slate-800">
-                  <table className="min-w-full divide-y divide-slate-800 text-left text-sm">
-                    <thead className="bg-slate-950 text-slate-300">
-                      <tr>
-                        <th className="whitespace-nowrap px-4 py-3" scope="col">
-                          Ley de corte (%)
-                        </th>
-                        <th className="whitespace-nowrap px-4 py-3" scope="col">
-                          Bloques minerales
-                        </th>
-                        <th className="whitespace-nowrap px-4 py-3" scope="col">
-                          Bloques estériles
-                        </th>
-                        <th className="whitespace-nowrap px-4 py-3" scope="col">
-                          Tonelaje recuperable (t)
-                        </th>
-                        <th className="whitespace-nowrap px-4 py-3" scope="col">
-                          Ley media recuperable (%)
-                        </th>
-                        <th className="whitespace-nowrap px-4 py-3" scope="col">
-                          Metal fino recuperable (t)
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-800">
-                      {comparison.map((point) => (
-                        <tr
-                          className="bg-slate-900/70"
-                          key={point.cutoffGrade}
-                        >
-                          <th
-                            className="whitespace-nowrap px-4 py-3 font-medium"
-                            scope="row"
-                          >
-                            {formatValue(point.cutoffGrade, "%")}
-                          </th>
-                          <td className="whitespace-nowrap px-4 py-3">
-                            {point.mineralBlockCount}
-                          </td>
-                          <td className="whitespace-nowrap px-4 py-3">
-                            {point.wasteBlockCount}
-                          </td>
-                          <td className="whitespace-nowrap px-4 py-3">
-                            {formatValue(point.recoverableTonnage)}
-                          </td>
-                          <td className="whitespace-nowrap px-4 py-3">
-                            {formatValue(point.recoverableAverageGrade)}
-                          </td>
-                          <td className="whitespace-nowrap px-4 py-3">
-                            {formatValue(point.recoverableFineMetal)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </section>
+              <TonnageGradeCurveChart
+                maximumCutoffGrade={curveResult.maximumCutoffGrade}
+                selectedCutoffGrade={selectedCutoffGrade}
+                series={curveSeries}
+              />
 
               <section
                 aria-label="Resumen global de ley de corte"
-                className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
+                className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
               >
+                <Metric
+                  label="Ley de corte seleccionada"
+                  value={formatValue(result.analysis.cutoffGrade, "%")}
+                />
                 <Metric
                   label="Bloques clasificados como mineral"
                   value={numberFormat.format(
@@ -304,22 +315,20 @@ export default function CutoffGradeAnalysis({
                     " t",
                   )}
                 />
+                <Metric
+                  label="Bloques estériles"
+                  value={numberFormat.format(result.analysis.wasteBlockCount)}
+                />
               </section>
 
-              <section
+              <details
                 aria-label="Detalle de bloques y clasificación"
                 className="mt-8"
               >
-                <div className="flex flex-wrap items-end justify-between gap-3">
-                  <div>
-                    <h3 className="text-xl font-semibold">
-                      Trazabilidad por bloque
-                    </h3>
-                    <p className="mt-1 text-sm text-slate-400">
-                      Ley de corte aplicada:{" "}
-                      {formatValue(result.analysis.cutoffGrade, "%")}
-                    </p>
-                  </div>
+                <summary className="cursor-pointer text-xl font-semibold">
+                  Trazabilidad por bloque
+                </summary>
+                <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
                   <p className="text-sm text-slate-400">
                     Estéril: {result.analysis.wasteBlockCount} · Sin ley:{" "}
                     {result.analysis.blocksWithoutGrade} · Sin tonelaje:{" "}
@@ -388,7 +397,7 @@ export default function CutoffGradeAnalysis({
                     </tbody>
                   </table>
                 </div>
-              </section>
+              </details>
             </>
           )}
         </>
