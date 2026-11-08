@@ -1,21 +1,34 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import BlockMap from "@/components/project/BlockMap";
 import {
   generateBlocks,
   type DrillholeForBlock,
 } from "@/lib/blocks/generateBlocks";
+import { loadBlocks } from "@/lib/blocks/loadBlocks";
 import { saveBlocks } from "@/lib/blocks/saveBlocks";
+import type { EstimationBlockInsert } from "@/types/EstimationBlock";
 import { supabase } from "@/lib/supabase";
 
-type LoadState = "generating" | "empty" | "available" | "error";
+type LoadState =
+  | "generating"
+  | "preview"
+  | "saving"
+  | "available"
+  | "empty"
+  | "error";
 
 type BlockGenerationProps = {
   projectId: string;
 };
 
 const PAGE_SIZE = 1000;
+
+const numberFormat = new Intl.NumberFormat("es-CL", {
+  maximumFractionDigits: 2,
+});
 
 function isNullableFiniteNumber(value: unknown): value is number | null {
   return value === null || (typeof value === "number" && Number.isFinite(value));
@@ -39,10 +52,90 @@ function isDrillholeForBlock(value: unknown): value is DrillholeForBlock {
   );
 }
 
+async function loadProjectDrillholes(
+  projectId: string,
+  signal: AbortSignal,
+): Promise<DrillholeForBlock[]> {
+  const drillholes: DrillholeForBlock[] = [];
+
+  for (let offset = 0; ; offset += PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from("drillholes")
+      .select("id, drillhole_id, easting, northing, thickness, density, grade")
+      .eq("project_id", projectId)
+      .order("id", { ascending: true })
+      .range(offset, offset + PAGE_SIZE - 1)
+      .abortSignal(signal);
+
+    if (error) {
+      throw new Error(`No se pudieron cargar los sondajes: ${error.message}`);
+    }
+
+    const rows: unknown[] = data ?? [];
+    for (const row of rows) {
+      if (!isDrillholeForBlock(row)) {
+        throw new Error(
+          "La consulta devolvió un sondaje con datos inválidos para generar bloques.",
+        );
+      }
+      drillholes.push(row);
+    }
+
+    if (rows.length < PAGE_SIZE) {
+      break;
+    }
+  }
+
+  return drillholes;
+}
+
+function PreviewTable({ blocks }: { blocks: EstimationBlockInsert[] }) {
+  return (
+    <div className="mt-5 overflow-x-auto rounded-xl border border-slate-800">
+      <table className="min-w-full divide-y divide-slate-800 text-left text-sm">
+        <thead className="bg-slate-950 text-slate-300">
+          <tr>
+            <th className="whitespace-nowrap px-4 py-3" scope="col">Bloque</th>
+            <th className="whitespace-nowrap px-4 py-3" scope="col">Área (m²)</th>
+            <th className="whitespace-nowrap px-4 py-3" scope="col">Potencia (m)</th>
+            <th className="whitespace-nowrap px-4 py-3" scope="col">Densidad (t/m³)</th>
+            <th className="whitespace-nowrap px-4 py-3" scope="col">Ley (%)</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-800">
+          {blocks.map((block) => (
+            <tr className="bg-slate-900/70" key={block.block_name}>
+              <th className="whitespace-nowrap px-4 py-3 font-medium" scope="row">
+                {block.block_name}
+              </th>
+              <td className="whitespace-nowrap px-4 py-3">
+                {numberFormat.format(block.area)}
+              </td>
+              {block.variables.map((variable) => (
+                <td
+                  className="whitespace-nowrap px-4 py-3"
+                  key={variable.variable_name}
+                >
+                  {variable.value === null
+                    ? "Sin dato"
+                    : numberFormat.format(variable.value)}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export default function BlockGeneration({
   projectId,
 }: BlockGenerationProps) {
-  const [savedBlockCount, setSavedBlockCount] = useState(0);
+  const [previewBlocks, setPreviewBlocks] = useState<EstimationBlockInsert[]>(
+    [],
+  );
+  const [reloadToken, setReloadToken] = useState(0);
   const [state, setState] = useState<LoadState>("generating");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -50,48 +143,41 @@ export default function BlockGeneration({
     const controller = new AbortController();
     let isActive = true;
 
-    async function loadAndGenerateBlocks() {
+    async function prepareBlocks() {
       setState("generating");
       setErrorMessage(null);
 
       try {
-        const drillholes: DrillholeForBlock[] = [];
-
-        for (let offset = 0; ; offset += PAGE_SIZE) {
-          const { data, error } = await supabase
-            .from("drillholes")
-            .select("id, drillhole_id, easting, northing, thickness, density, grade")
-            .eq("project_id", projectId)
-            .order("id", { ascending: true })
-            .range(offset, offset + PAGE_SIZE - 1)
-            .abortSignal(controller.signal);
-
-          if (error) {
-            throw error;
-          }
-
-          const batch: unknown[] = data ?? [];
-          for (const row of batch) {
-            if (!isDrillholeForBlock(row)) {
-              throw new Error(
-                "La consulta devolvió un sondaje con datos inválidos para generar bloques.",
-              );
-            }
-            drillholes.push(row);
-          }
-
-          if (batch.length < PAGE_SIZE) {
-            break;
-          }
-        }
-
-        const generatedBlocks = generateBlocks(drillholes);
-        const savedCount = await saveBlocks(projectId, generatedBlocks);
+        const existingBlocks = await loadBlocks(
+          projectId,
+          controller.signal,
+        );
         if (!isActive) {
           return;
         }
-        setSavedBlockCount(savedCount);
-        setState(savedCount > 0 ? "available" : "empty");
+
+        if (existingBlocks.length > 0) {
+          setState("available");
+          return;
+        }
+
+        const drillholes = await loadProjectDrillholes(
+          projectId,
+          controller.signal,
+        );
+        if (!isActive) {
+          return;
+        }
+
+        if (drillholes.length === 0) {
+          setPreviewBlocks([]);
+          setState("empty");
+          return;
+        }
+
+        const generatedBlocks = generateBlocks(drillholes);
+        setPreviewBlocks(generatedBlocks);
+        setState(generatedBlocks.length > 0 ? "preview" : "empty");
       } catch (error) {
         if (!isActive) {
           return;
@@ -105,13 +191,39 @@ export default function BlockGeneration({
       }
     }
 
-    void loadAndGenerateBlocks();
+    void prepareBlocks();
 
     return () => {
       isActive = false;
       controller.abort();
     };
   }, [projectId]);
+
+  async function handleSave() {
+    if (previewBlocks.length === 0 || state === "saving") {
+      return;
+    }
+
+    setState("saving");
+    setErrorMessage(null);
+    try {
+      await saveBlocks(projectId, previewBlocks);
+      setReloadToken((current) => current + 1);
+      setState("available");
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "No se pudieron guardar los bloques.",
+      );
+      setState("preview");
+    }
+  }
+
+  const totalPreviewArea = previewBlocks.reduce(
+    (total, block) => total + block.area,
+    0,
+  );
 
   return (
     <section
@@ -133,15 +245,18 @@ export default function BlockGeneration({
         </div>
         <p className="text-sm text-slate-400" role="status">
           {state === "generating" && "Generando"}
-          {state === "empty" && "Sin bloques"}
+          {state === "preview" && "Vista previa"}
+          {state === "saving" && "Guardando"}
           {state === "available" && "Bloques disponibles"}
+          {state === "empty" && "Sin bloques"}
           {state === "error" && "Error al generar"}
         </p>
       </div>
 
       {state === "generating" && (
         <p className="mt-5 rounded-xl border border-slate-800 bg-slate-900 p-6 text-slate-300">
-          Cargando sondajes y generando bloques…
+          Consultando bloques existentes y, si no hay, generando una vista
+          previa…
         </p>
       )}
 
@@ -161,13 +276,54 @@ export default function BlockGeneration({
         </p>
       )}
 
+      {state === "preview" && (
+        <div className="mt-5 rounded-xl border border-slate-800 bg-slate-900 p-5">
+          <h3 className="text-lg font-semibold">Vista previa de bloques</h3>
+          <p className="mt-2 text-sm text-slate-300">
+            Bloques generados:{" "}
+            <strong className="text-slate-100">{previewBlocks.length}</strong>
+            <span className="mx-3 text-slate-600">|</span>
+            Área total:{" "}
+            <strong className="text-slate-100">
+              {numberFormat.format(totalPreviewArea)} m²
+            </strong>
+          </p>
+          <PreviewTable blocks={previewBlocks} />
+          {errorMessage && (
+            <p className="mt-4 text-sm text-red-200" role="alert">
+              {errorMessage}
+            </p>
+          )}
+          <button
+            className="mt-5 rounded-lg bg-emerald-400 px-6 py-3 font-semibold text-slate-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-60"
+            onClick={handleSave}
+            type="button"
+          >
+            Guardar bloques
+          </button>
+        </div>
+      )}
+
+      {state === "saving" && (
+        <p className="mt-5 rounded-xl border border-slate-800 bg-slate-900 p-6 text-slate-300">
+          Guardando bloques y variables…
+        </p>
+      )}
+
       {state === "available" && (
         <>
-          <p className="mt-5 rounded-xl border border-emerald-500/30 bg-emerald-950/20 p-4 text-slate-200">
-            Cantidad de bloques guardados:{" "}
-              <strong className="text-emerald-200">{savedBlockCount}</strong>
-          </p>
-            <BlockMap projectId={projectId} />
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-emerald-500/30 bg-emerald-950/20 p-4">
+            <p className="text-slate-200">
+              Los bloques están guardados y listos para reutilizarse.
+            </p>
+            <Link
+              className="rounded-lg border border-cyan-400 px-4 py-2 text-sm font-semibold text-cyan-300 transition hover:bg-cyan-400 hover:text-slate-950"
+              href={`/project/${projectId}/visualization`}
+            >
+              Ir a Visualización
+            </Link>
+          </div>
+          <BlockMap projectId={projectId} reloadToken={reloadToken} />
         </>
       )}
     </section>

@@ -6,7 +6,7 @@ const stages = [
   "Datos",
   "Tablas",
   "Visualización",
-  "Generación Automática de Bloques",
+  "Bloques",
   "Geoestadística",
   "Recursos",
   "Reportes",
@@ -97,7 +97,7 @@ async function ProjectContent({
             {stages.map((stage) =>
               stage === "Datos" ||
               stage === "Visualización" ||
-              stage === "Generación Automática de Bloques" ? (
+              stage === "Bloques" ? (
                 <Link
                   className="rounded-xl border border-slate-800 bg-slate-900 p-6 transition hover:border-cyan-400"
                   href={`/project/${project.id}/${stage === "Datos" ? "data" : stage === "Visualización" ? "visualization" : "blocks"}`}

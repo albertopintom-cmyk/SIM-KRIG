@@ -122,18 +122,21 @@ function getVariables(
   return [
     {
       variable_name: "Potencia",
+      variation_type: "continuous",
       value: thickness,
       unit: "m",
       calculation_method: "Promedio de los cuatro sondajes vecinos",
     },
     {
       variable_name: "Densidad",
+      variation_type: "continuous",
       value: density,
       unit: "t/m³",
       calculation_method: "Promedio de los cuatro sondajes vecinos",
     },
     {
       variable_name: "Ley",
+      variation_type: "continuous",
       value: grade,
       unit: "%",
       calculation_method: "Promedio de los cuatro sondajes vecinos",

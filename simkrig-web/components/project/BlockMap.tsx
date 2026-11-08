@@ -1,21 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { loadBlocks, type LoadedEstimationBlock } from "@/lib/blocks/loadBlocks";
 import type { BlockVariable } from "@/types/BlockVariable";
-import type {
-  BlockGeometry,
-  EstimationBlock,
-} from "@/types/EstimationBlock";
-
-type LoadedBlock = EstimationBlock & {
-  variables: BlockVariable[];
-};
 
 type LoadState = "loading" | "empty" | "available" | "error";
 
 type BlockMapProps = {
   projectId: string;
+  reloadToken?: number;
 };
 
 type Bounds = {
@@ -26,11 +19,10 @@ type Bounds = {
 };
 
 type ProjectedBlock = {
-  block: LoadedBlock;
+  block: LoadedEstimationBlock;
   points: string;
 };
 
-const PAGE_SIZE = 1000;
 const SVG_WIDTH = 1000;
 const SVG_HEIGHT = 600;
 const PADDING = 48;
@@ -39,58 +31,7 @@ const numberFormat = new Intl.NumberFormat("es-CL", {
   maximumFractionDigits: 2,
 });
 
-function isFiniteNumber(value: unknown): value is number {
-  return typeof value === "number" && Number.isFinite(value);
-}
-
-function isBlockVertex(value: unknown): value is BlockGeometry[number] {
-  if (typeof value !== "object" || value === null) {
-    return false;
-  }
-  const record = value as Record<string, unknown>;
-  return isFiniteNumber(record.easting) && isFiniteNumber(record.northing);
-}
-
-function isBlockGeometry(value: unknown): value is BlockGeometry {
-  return (
-    Array.isArray(value) &&
-    value.length === 4 &&
-    value.every(isBlockVertex)
-  );
-}
-
-function isEstimationBlock(value: unknown): value is EstimationBlock {
-  if (typeof value !== "object" || value === null) {
-    return false;
-  }
-  const record = value as Record<string, unknown>;
-  return (
-    typeof record.id === "string" &&
-    typeof record.project_id === "string" &&
-    typeof record.block_name === "string" &&
-    isFiniteNumber(record.area) &&
-    isBlockGeometry(record.geometry) &&
-    typeof record.created_at === "string"
-  );
-}
-
-function isBlockVariable(value: unknown): value is BlockVariable {
-  if (typeof value !== "object" || value === null) {
-    return false;
-  }
-  const record = value as Record<string, unknown>;
-  return (
-    typeof record.id === "string" &&
-    typeof record.block_id === "string" &&
-    typeof record.variable_name === "string" &&
-    (record.value === null || isFiniteNumber(record.value)) &&
-    typeof record.unit === "string" &&
-    typeof record.calculation_method === "string" &&
-    typeof record.created_at === "string"
-  );
-}
-
-function getBounds(blocks: readonly LoadedBlock[]): Bounds {
+function getBounds(blocks: readonly LoadedEstimationBlock[]): Bounds {
   return blocks.flatMap((block) => block.geometry).reduce(
     (bounds, vertex) => ({
       minEasting: Math.min(bounds.minEasting, vertex.easting),
@@ -107,7 +48,7 @@ function getBounds(blocks: readonly LoadedBlock[]): Bounds {
   );
 }
 
-function getVariableOptions(blocks: readonly LoadedBlock[]) {
+function getVariableOptions(blocks: readonly LoadedEstimationBlock[]) {
   const options = new Map<string, BlockVariable>();
   for (const block of blocks) {
     for (const variable of block.variables) {
@@ -121,7 +62,7 @@ function getVariableOptions(blocks: readonly LoadedBlock[]) {
   );
 }
 
-function findBlockVariable(block: LoadedBlock, name: string) {
+function findBlockVariable(block: LoadedEstimationBlock, name: string) {
   return block.variables.find((variable) => variable.variable_name === name);
 }
 
@@ -148,13 +89,9 @@ function formatValue(value: number | null | undefined, unit = "") {
     : `${numberFormat.format(value)}${unit ? ` ${unit}` : ""}`;
 }
 
-function BlockTooltip({ block }: { block: LoadedBlock }) {
-  const thickness = findBlockVariable(block, "Potencia");
-  const density = findBlockVariable(block, "Densidad");
-  const grade = findBlockVariable(block, "Ley");
-
+function BlockTooltip({ block }: { block: LoadedEstimationBlock }) {
   return (
-    <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-5">
+    <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
       <div>
         <dt className="text-xs uppercase tracking-wide text-slate-400">Bloque</dt>
         <dd className="mt-1 break-all font-semibold text-slate-100">
@@ -163,34 +100,27 @@ function BlockTooltip({ block }: { block: LoadedBlock }) {
       </div>
       <div>
         <dt className="text-xs uppercase tracking-wide text-slate-400">Área</dt>
-        <dd className="mt-1 text-slate-100">
-          {formatValue(block.area, "m²")}
-        </dd>
+        <dd className="mt-1 text-slate-100">{formatValue(block.area, "m²")}</dd>
       </div>
-      <div>
-        <dt className="text-xs uppercase tracking-wide text-slate-400">Potencia</dt>
-        <dd className="mt-1 text-slate-100">
-          {formatValue(thickness?.value, thickness?.unit)}
-        </dd>
-      </div>
-      <div>
-        <dt className="text-xs uppercase tracking-wide text-slate-400">Densidad</dt>
-        <dd className="mt-1 text-slate-100">
-          {formatValue(density?.value, density?.unit)}
-        </dd>
-      </div>
-      <div>
-        <dt className="text-xs uppercase tracking-wide text-slate-400">Ley</dt>
-        <dd className="mt-1 text-slate-100">
-          {formatValue(grade?.value, grade?.unit)}
-        </dd>
-      </div>
+      {block.variables.map((variable) => (
+        <div key={variable.id}>
+          <dt className="text-xs uppercase tracking-wide text-slate-400">
+            {variable.variable_name}
+          </dt>
+          <dd className="mt-1 text-slate-100">
+            {formatValue(variable.value, variable.unit)}
+          </dd>
+        </div>
+      ))}
     </dl>
   );
 }
 
-export default function BlockMap({ projectId }: BlockMapProps) {
-  const [blocks, setBlocks] = useState<LoadedBlock[]>([]);
+export default function BlockMap({
+  projectId,
+  reloadToken = 0,
+}: BlockMapProps) {
+  const [blocks, setBlocks] = useState<LoadedEstimationBlock[]>([]);
   const [state, setState] = useState<LoadState>("loading");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [activeVariableName, setActiveVariableName] = useState("");
@@ -200,96 +130,15 @@ export default function BlockMap({ projectId }: BlockMapProps) {
     const controller = new AbortController();
     let isActive = true;
 
-    async function loadBlocks() {
+    async function refreshBlocks() {
       setState("loading");
       setErrorMessage(null);
 
       try {
-        const storedBlocks: EstimationBlock[] = [];
-
-        for (let offset = 0; ; offset += PAGE_SIZE) {
-          const { data, error } = await supabase
-            .from("estimation_blocks")
-            .select("id, project_id, block_name, area, geometry, created_at")
-            .eq("project_id", projectId)
-            .order("block_name", { ascending: true })
-            .range(offset, offset + PAGE_SIZE - 1)
-            .abortSignal(controller.signal);
-
-          if (error) {
-            throw error;
-          }
-
-          const batch: unknown[] = data ?? [];
-          for (const row of batch) {
-            if (!isEstimationBlock(row)) {
-              throw new Error(
-                "La base de datos devolvió un bloque con formato inválido.",
-              );
-            }
-            storedBlocks.push(row);
-          }
-          if (batch.length < PAGE_SIZE) {
-            break;
-          }
-        }
-
-        const variables: BlockVariable[] = [];
-        for (
-          let startIndex = 0;
-          startIndex < storedBlocks.length;
-          startIndex += PAGE_SIZE
-        ) {
-          const blockIds = storedBlocks
-            .slice(startIndex, startIndex + PAGE_SIZE)
-            .map((block) => block.id);
-
-          for (let offset = 0; ; offset += PAGE_SIZE) {
-            const { data, error } = await supabase
-              .from("block_variables")
-              .select(
-                "id, block_id, variable_name, value, unit, calculation_method, created_at",
-              )
-              .in("block_id", blockIds)
-              .order("variable_name", { ascending: true })
-              .range(offset, offset + PAGE_SIZE - 1)
-              .abortSignal(controller.signal);
-
-            if (error) {
-              throw error;
-            }
-
-            const batch: unknown[] = data ?? [];
-            for (const row of batch) {
-              if (!isBlockVariable(row)) {
-                throw new Error(
-                  "La base de datos devolvió una variable de bloque con formato inválido.",
-                );
-              }
-              variables.push(row);
-            }
-            if (batch.length < PAGE_SIZE) {
-              break;
-            }
-          }
-        }
-
+        const loadedBlocks = await loadBlocks(projectId, controller.signal);
         if (!isActive) {
           return;
         }
-
-        const variablesByBlock = new Map<string, BlockVariable[]>();
-        for (const variable of variables) {
-          const blockVariables =
-            variablesByBlock.get(variable.block_id) ?? [];
-          blockVariables.push(variable);
-          variablesByBlock.set(variable.block_id, blockVariables);
-        }
-
-        const loadedBlocks = storedBlocks.map((block) => ({
-          ...block,
-          variables: variablesByBlock.get(block.id) ?? [],
-        }));
         setBlocks(loadedBlocks);
         setState(loadedBlocks.length > 0 ? "available" : "empty");
       } catch (error) {
@@ -305,13 +154,13 @@ export default function BlockMap({ projectId }: BlockMapProps) {
       }
     }
 
-    void loadBlocks();
+    void refreshBlocks();
 
     return () => {
       isActive = false;
       controller.abort();
     };
-  }, [projectId]);
+  }, [projectId, reloadToken]);
 
   const variableOptions = useMemo(() => getVariableOptions(blocks), [blocks]);
   const selectedVariableName =
@@ -341,10 +190,9 @@ export default function BlockMap({ projectId }: BlockMapProps) {
       count: 0,
     },
   );
-  const minimum =
-    variableRange.count > 0 ? variableRange.minimum : null;
-  const maximum =
-    variableRange.count > 0 ? variableRange.maximum : null;
+  const minimum = variableRange.count > 0 ? variableRange.minimum : null;
+  const maximum = variableRange.count > 0 ? variableRange.maximum : null;
+  const totalArea = blocks.reduce((total, block) => total + block.area, 0);
 
   const projectedBlocks = useMemo<ProjectedBlock[]>(() => {
     if (blocks.length === 0) {
@@ -395,7 +243,7 @@ export default function BlockMap({ projectId }: BlockMapProps) {
         <p className="text-sm text-slate-400" role="status">
           {state === "loading" && "Cargando"}
           {state === "empty" && "Sin bloques"}
-          {state === "available" && "Bloques disponibles"}
+          {state === "available" && "Visualización disponible"}
           {state === "error" && "Error al cargar"}
         </p>
       </div>
@@ -423,6 +271,31 @@ export default function BlockMap({ projectId }: BlockMapProps) {
 
       {state === "available" && (
         <>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <article className="rounded-xl border border-slate-800 bg-slate-900 p-4">
+              <p className="text-sm text-slate-400">Cantidad bloques</p>
+              <p className="mt-2 text-2xl font-semibold">{blocks.length}</p>
+            </article>
+            <article className="rounded-xl border border-slate-800 bg-slate-900 p-4">
+              <p className="text-sm text-slate-400">Área total</p>
+              <p className="mt-2 text-2xl font-semibold">
+                {formatValue(totalArea, "m²")}
+              </p>
+            </article>
+            <article className="rounded-xl border border-slate-800 bg-slate-900 p-4">
+              <p className="text-sm text-slate-400">Valor mínimo</p>
+              <p className="mt-2 text-2xl font-semibold">
+                {formatValue(minimum, selectedVariable?.unit)}
+              </p>
+            </article>
+            <article className="rounded-xl border border-slate-800 bg-slate-900 p-4">
+              <p className="text-sm text-slate-400">Valor máximo</p>
+              <p className="mt-2 text-2xl font-semibold">
+                {formatValue(maximum, selectedVariable?.unit)}
+              </p>
+            </article>
+          </div>
+
           <div className="mt-5 flex flex-wrap items-end justify-between gap-4">
             <label className="flex flex-col gap-2 text-sm text-slate-300">
               Variable a visualizar
@@ -444,30 +317,11 @@ export default function BlockMap({ projectId }: BlockMapProps) {
               </select>
             </label>
             <p className="text-sm text-slate-300">
-              Cantidad de bloques:{" "}
-              <strong className="text-slate-100">{blocks.length}</strong>
-            </p>
-          </div>
-
-          <div className="mt-4 grid gap-3 sm:grid-cols-3">
-            <article className="rounded-xl border border-slate-800 bg-slate-900 p-4">
-              <p className="text-sm text-slate-400">Variable activa</p>
-              <p className="mt-2 text-xl font-semibold">
+              Variable activa:{" "}
+              <strong className="text-slate-100">
                 {selectedVariable?.variable_name ?? "Sin variables"}
-              </p>
-            </article>
-            <article className="rounded-xl border border-slate-800 bg-slate-900 p-4">
-              <p className="text-sm text-slate-400">Rango mínimo</p>
-              <p className="mt-2 text-xl font-semibold">
-                {formatValue(minimum, selectedVariable?.unit)}
-              </p>
-            </article>
-            <article className="rounded-xl border border-slate-800 bg-slate-900 p-4">
-              <p className="text-sm text-slate-400">Rango máximo</p>
-              <p className="mt-2 text-xl font-semibold">
-                {formatValue(maximum, selectedVariable?.unit)}
-              </p>
-            </article>
+              </strong>
+            </p>
           </div>
 
           <div className="mt-4 overflow-hidden rounded-xl border border-slate-800 bg-slate-950">

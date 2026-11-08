@@ -69,6 +69,12 @@ async function ProjectVisualizationContent({
             VISUALIZACIÓN DEL PROYECTO
           </p>
           <h1 className="mt-3 text-3xl font-bold">{project.name}</h1>
+          <Link
+            className="mt-5 inline-flex rounded-lg border border-cyan-400 px-4 py-2 text-sm font-semibold text-cyan-300 transition hover:bg-cyan-400 hover:text-slate-950"
+            href={`/project/${project.id}/blocks`}
+          >
+            Bloques
+          </Link>
         </header>
         <DrillholeMap projectId={project.id} />
       </div>
