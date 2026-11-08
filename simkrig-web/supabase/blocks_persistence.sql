@@ -30,7 +30,6 @@ create table if not exists public.block_variables (
   variable_name text not null
     constraint block_variables_variable_name_nonempty
     check (length(trim(variable_name)) > 0),
-  variation_type text not null default 'continuous',
   value numeric,
   unit text not null,
   calculation_method text not null,
@@ -38,9 +37,6 @@ create table if not exists public.block_variables (
   constraint block_variables_block_variable_name_key
     unique (block_id, variable_name)
 );
-
-alter table public.block_variables
-  add column if not exists variation_type text not null default 'continuous';
 
 create index if not exists estimation_blocks_project_id_idx
   on public.estimation_blocks (project_id);
@@ -248,7 +244,6 @@ begin
   insert into public.block_variables (
     block_id,
     variable_name,
-    variation_type,
     value,
     unit,
     calculation_method
@@ -256,7 +251,6 @@ begin
   select
     estimation_blocks.id,
     variable_data.variable_name,
-    variable_data.variation_type,
     variable_data.value,
     variable_data.unit,
     variable_data.calculation_method
@@ -271,7 +265,6 @@ begin
     and estimation_blocks.block_name = block_data.block_name
   cross join lateral jsonb_to_recordset(block_data.variables) as variable_data(
     variable_name text,
-    variation_type text,
     value numeric,
     unit text,
     calculation_method text

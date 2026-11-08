@@ -20,7 +20,6 @@ create table public.block_variables (
   block_id uuid not null
     references public.estimation_blocks (id) on delete cascade,
   variable_name text not null check (length(trim(variable_name)) > 0),
-  variation_type text not null default 'continuous',
   value numeric,
   unit text not null,
   calculation_method text not null,

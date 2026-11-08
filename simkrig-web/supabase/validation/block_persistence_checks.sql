@@ -78,7 +78,6 @@ order by projects.id;
 select
   estimation_blocks.project_id,
   block_variables.variable_name,
-  block_variables.variation_type,
   count(*) as variable_count,
   count(block_variables.value) as non_null_value_count
 from public.block_variables
@@ -86,8 +85,7 @@ join public.estimation_blocks
   on estimation_blocks.id = block_variables.block_id
 group by
   estimation_blocks.project_id,
-  block_variables.variable_name,
-  block_variables.variation_type
+  block_variables.variable_name
 order by estimation_blocks.project_id, block_variables.variable_name;
 
 -- Confirm there are no orphan variables and no blocks with a missing project.
@@ -138,7 +136,6 @@ begin
   insert into public.block_variables (
     block_id,
     variable_name,
-    variation_type,
     value,
     unit,
     calculation_method
@@ -146,7 +143,6 @@ begin
   values (
     test_block_id,
     '__rls_validation__',
-    'continuous',
     1,
     'test',
     'temporary RLS validation'

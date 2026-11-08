@@ -51,7 +51,6 @@ function validateBlocks(blocks: readonly EstimationBlockInsert[]) {
         typeof variable !== "object" ||
         typeof variable.variable_name !== "string" ||
         variable.variable_name.trim() === "" ||
-        typeof variable.variation_type !== "string" ||
         typeof variable.unit !== "string" ||
         typeof variable.calculation_method !== "string" ||
         (variable.value !== null &&
@@ -81,7 +80,6 @@ export async function saveBlocks(
     })),
     variables: block.variables.map((variable) => ({
       variable_name: variable.variable_name,
-      variation_type: variable.variation_type,
       value: variable.value,
       unit: variable.unit,
       calculation_method: variable.calculation_method,

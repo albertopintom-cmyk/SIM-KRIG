@@ -123,21 +123,18 @@ function getVariables(
   const variables: BlockVariableInsert[] = [
     {
       variable_name: "Potencia",
-      variation_type: "continuous",
       value: thickness,
       unit: "m",
       calculation_method: "mean_of_four_neighboring_drillholes",
     },
     {
       variable_name: "Densidad",
-      variation_type: "continuous",
       value: density,
       unit: "t/m³",
       calculation_method: "mean_of_four_neighboring_drillholes",
     },
     {
       variable_name: "Ley",
-      variation_type: "continuous",
       value: grade,
       unit: "%",
       calculation_method: "mean_of_four_neighboring_drillholes",
@@ -172,21 +169,18 @@ export function addDerivedBlockVariables(
   const derivedVariables: BlockVariableInsert[] = [
     {
       variable_name: "Volumen",
-      variation_type: "continuous",
       value: volume,
       unit: "m³",
       calculation_method: "area_x_thickness",
     },
     {
       variable_name: "Tonelaje",
-      variation_type: "continuous",
       value: tonnage,
       unit: "t",
       calculation_method: "volume_x_density",
     },
     {
       variable_name: "Metal Fino",
-      variation_type: "continuous",
       value: fineMetal,
       unit: "t",
       calculation_method: "tonnage_x_grade",

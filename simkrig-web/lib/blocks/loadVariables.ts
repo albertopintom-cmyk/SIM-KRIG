@@ -13,7 +13,6 @@ function isBlockVariable(value: unknown): value is BlockVariable {
     typeof record.id === "string" &&
     typeof record.block_id === "string" &&
     typeof record.variable_name === "string" &&
-    typeof record.variation_type === "string" &&
     (record.value === null ||
       (typeof record.value === "number" && Number.isFinite(record.value))) &&
     typeof record.unit === "string" &&
@@ -39,7 +38,7 @@ export async function loadVariables(
       let request = supabase
         .from("block_variables")
         .select(
-          "id, block_id, variable_name, variation_type, value, unit, calculation_method, created_at",
+          "id, block_id, variable_name, value, unit, calculation_method, created_at",
         )
         .in("block_id", batchIds)
         .order("variable_name", { ascending: true })

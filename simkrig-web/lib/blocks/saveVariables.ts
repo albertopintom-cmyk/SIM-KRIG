@@ -16,7 +16,6 @@ export async function saveVariables(
     variables.map((variable) => ({
       block_id: variable.block_id,
       variable_name: variable.variable_name,
-      variation_type: variable.variation_type,
       value: variable.value,
       unit: variable.unit,
       calculation_method: variable.calculation_method,

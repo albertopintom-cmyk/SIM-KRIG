@@ -1,6 +1,3 @@
-alter table public.block_variables
-  add column if not exists variation_type text not null default 'continuous';
-
 create index if not exists block_variables_variable_name_idx
   on public.block_variables (variable_name);
 
@@ -197,7 +194,6 @@ begin
   insert into public.block_variables (
     block_id,
     variable_name,
-    variation_type,
     value,
     unit,
     calculation_method
@@ -205,7 +201,6 @@ begin
   select
     estimation_blocks.id,
     variable_data.variable_name,
-    variable_data.variation_type,
     variable_data.value,
     variable_data.unit,
     variable_data.calculation_method
@@ -220,7 +215,6 @@ begin
     and estimation_blocks.block_name = block_data.block_name
   cross join lateral jsonb_to_recordset(block_data.variables) as variable_data(
     variable_name text,
-    variation_type text,
     value numeric,
     unit text,
     calculation_method text

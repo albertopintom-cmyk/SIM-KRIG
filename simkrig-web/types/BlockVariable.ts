@@ -2,7 +2,6 @@ export interface BlockVariable {
   id: string;
   block_id: string;
   variable_name: string;
-  variation_type: string;
   value: number | null;
   unit: string;
   calculation_method: string;
@@ -11,7 +10,6 @@ export interface BlockVariable {
 
 export interface BlockVariableInsert {
   variable_name: string;
-  variation_type: string;
   value: number | null;
   unit: string;
   calculation_method: string;
