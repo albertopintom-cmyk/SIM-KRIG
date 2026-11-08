@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
+import { connection } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import ProjectDataFiles from "@/components/project/ProjectDataFiles";
 import ResetProjectButton from "@/components/project/ResetProjectButton";
@@ -64,6 +65,7 @@ async function ProjectDataContent({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ reset?: string }>;
 }) {
+  await connection();
   const { id } = await params;
   const { reset } = await searchParams;
   const project = await getProject(id);

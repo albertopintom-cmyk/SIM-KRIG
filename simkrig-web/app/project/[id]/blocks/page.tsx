@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
+import { connection } from "next/server";
 import BlockGeneration from "@/components/project/BlockGeneration";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
@@ -43,6 +44,7 @@ async function ProjectBlocksContent({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  await connection();
   const { id } = await params;
   const project = await getProject(id);
 

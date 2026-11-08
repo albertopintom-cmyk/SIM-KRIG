@@ -1,8 +1,10 @@
 import Link from "next/link";
+import { connection } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import SignOutButton from "@/components/auth/SignOutButton";
 
 export default async function AuthenticatedUser() {
+  await connection();
   const supabase = await createServerSupabaseClient();
   const {
     data: { user },

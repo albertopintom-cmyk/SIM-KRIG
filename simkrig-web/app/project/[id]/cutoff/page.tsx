@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
+import { connection } from "next/server";
 import CutoffGradeAnalysis from "@/components/project/CutoffGradeAnalysis";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
@@ -43,6 +44,7 @@ async function ProjectCutoffContent({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  await connection();
   const { id } = await params;
   const project = await getProject(id);
 

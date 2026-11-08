@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
+import { connection } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 const stages = [
@@ -53,6 +54,7 @@ async function ProjectContent({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  await connection();
   const { id } = await params;
   const project = await getProject(id);
 
