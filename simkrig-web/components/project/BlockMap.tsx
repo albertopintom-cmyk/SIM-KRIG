@@ -1,27 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import type {
+  BlockVariable,
+  EstimationBlock,
+} from "@/lib/blocks/generateBlocks";
 
-export interface BlockVariable {
-  name: string;
-  value: number | null;
-  unit: string;
-}
+export type { BlockVariable, BlockVertex } from "@/lib/blocks/generateBlocks";
 
-export interface BlockVertex {
-  easting: number;
-  northing: number;
-}
-
-export interface BlockMapBlock {
-  id: string;
-  vertices: readonly [BlockVertex, BlockVertex, BlockVertex, BlockVertex];
-  area: number;
-  avg_thickness: number;
-  avg_density: number;
-  avg_grade: number;
-  variables: readonly BlockVariable[];
-}
+type BlockMapBlock = EstimationBlock;
 
 type BlockMapProps = {
   blocks: readonly BlockMapBlock[];
@@ -161,8 +148,20 @@ export default function BlockMap({
     .map((block) => getBlockVariable(block, selectedVariableName ?? ""))
     .map((variable) => variable?.value)
     .filter((value): value is number => value !== null && value !== undefined);
-  const minimum = variableValues.length > 0 ? Math.min(...variableValues) : null;
-  const maximum = variableValues.length > 0 ? Math.max(...variableValues) : null;
+  const variableRange = variableValues.reduce(
+    (range, value) => ({
+      minimum: Math.min(range.minimum, value),
+      maximum: Math.max(range.maximum, value),
+    }),
+    {
+      minimum: Number.POSITIVE_INFINITY,
+      maximum: Number.NEGATIVE_INFINITY,
+    },
+  );
+  const minimum =
+    variableValues.length > 0 ? variableRange.minimum : null;
+  const maximum =
+    variableValues.length > 0 ? variableRange.maximum : null;
 
   const projectedBlocks = useMemo<ProjectedBlock[]>(() => {
     if (blocks.length === 0) {
