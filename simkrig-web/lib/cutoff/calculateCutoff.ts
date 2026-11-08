@@ -25,6 +25,15 @@ export type CutoffAnalysis = {
   recoverableFineMetal: number;
 };
 
+export type CutoffCurvePoint = {
+  cutoffGrade: number;
+  mineralBlockCount: number;
+  wasteBlockCount: number;
+  recoverableTonnage: number;
+  recoverableAverageGrade: number | null;
+  recoverableFineMetal: number;
+};
+
 function getVariableValue(
   block: LoadedEstimationBlock,
   variableName: string,
@@ -124,4 +133,23 @@ export function calculateCutoff(
         : null,
     recoverableFineMetal,
   };
+}
+
+export function calculateCutoffCurve(
+  blocks: readonly LoadedEstimationBlock[],
+  cutoffGrades: readonly number[],
+): CutoffCurvePoint[] {
+  return [...cutoffGrades]
+    .sort((left, right) => left - right)
+    .map((cutoffGrade) => {
+      const analysis = calculateCutoff(blocks, cutoffGrade);
+      return {
+        cutoffGrade: analysis.cutoffGrade,
+        mineralBlockCount: analysis.mineralBlockCount,
+        wasteBlockCount: analysis.wasteBlockCount,
+        recoverableTonnage: analysis.recoverableTonnage,
+        recoverableAverageGrade: analysis.recoverableAverageGrade,
+        recoverableFineMetal: analysis.recoverableFineMetal,
+      };
+    });
 }

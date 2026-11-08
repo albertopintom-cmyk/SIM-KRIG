@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   calculateCutoff,
+  calculateCutoffCurve,
   type CutoffAnalysis,
 } from "@/lib/cutoff/calculateCutoff";
 import { loadPersistedBlocks } from "@/lib/blocks/loadPersistedBlocks";
@@ -17,6 +18,7 @@ type CutoffGradeAnalysisProps = {
 const numberFormat = new Intl.NumberFormat("es-CL", {
   maximumFractionDigits: 2,
 });
+const comparisonCutoffs = [0.5, 1, 1.5, 2] as const;
 
 function formatValue(value: number | null, unit = "") {
   return value === null
@@ -132,6 +134,10 @@ export default function CutoffGradeAnalysis({
     () => getCutoffAnalysis(blocks, cutoffInput),
     [blocks, cutoffInput],
   );
+  const comparison = useMemo(
+    () => calculateCutoffCurve(blocks, comparisonCutoffs),
+    [blocks],
+  );
 
   return (
     <section aria-labelledby="cutoff-analysis-heading" className="mt-8">
@@ -198,6 +204,75 @@ export default function CutoffGradeAnalysis({
 
           {result.analysis && (
             <>
+              <section
+                aria-label="Comparación de leyes de corte"
+                className="mt-8"
+              >
+                <h3 className="text-xl font-semibold">
+                  Comparación por ley de corte
+                </h3>
+                <p className="mt-1 text-sm text-slate-400">
+                  Cada fila es un punto estructurado para una futura curva
+                  tonelaje-ley.
+                </p>
+                <div className="mt-4 overflow-x-auto rounded-xl border border-slate-800">
+                  <table className="min-w-full divide-y divide-slate-800 text-left text-sm">
+                    <thead className="bg-slate-950 text-slate-300">
+                      <tr>
+                        <th className="whitespace-nowrap px-4 py-3" scope="col">
+                          Ley de corte (%)
+                        </th>
+                        <th className="whitespace-nowrap px-4 py-3" scope="col">
+                          Bloques minerales
+                        </th>
+                        <th className="whitespace-nowrap px-4 py-3" scope="col">
+                          Bloques estériles
+                        </th>
+                        <th className="whitespace-nowrap px-4 py-3" scope="col">
+                          Tonelaje recuperable (t)
+                        </th>
+                        <th className="whitespace-nowrap px-4 py-3" scope="col">
+                          Ley media recuperable (%)
+                        </th>
+                        <th className="whitespace-nowrap px-4 py-3" scope="col">
+                          Metal fino recuperable (t)
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800">
+                      {comparison.map((point) => (
+                        <tr
+                          className="bg-slate-900/70"
+                          key={point.cutoffGrade}
+                        >
+                          <th
+                            className="whitespace-nowrap px-4 py-3 font-medium"
+                            scope="row"
+                          >
+                            {formatValue(point.cutoffGrade, "%")}
+                          </th>
+                          <td className="whitespace-nowrap px-4 py-3">
+                            {point.mineralBlockCount}
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3">
+                            {point.wasteBlockCount}
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3">
+                            {formatValue(point.recoverableTonnage)}
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3">
+                            {formatValue(point.recoverableAverageGrade)}
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3">
+                            {formatValue(point.recoverableFineMetal)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+
               <section
                 aria-label="Resumen global de ley de corte"
                 className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
