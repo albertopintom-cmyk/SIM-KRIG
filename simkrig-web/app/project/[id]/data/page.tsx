@@ -95,15 +95,7 @@ async function ProjectDataContent({
             </p>
             <h1 className="mt-3 text-3xl font-bold">{project.name}</h1>
           </div>
-          <div className="flex flex-col gap-3 sm:items-end">
-            <Link
-              className="rounded-lg bg-cyan-400 px-6 py-3 text-center font-semibold text-slate-950 transition hover:bg-cyan-300"
-              href="#excel-import"
-            >
-              Cargar Excel
-            </Link>
-            <ResetProjectButton projectId={project.id} />
-          </div>
+          <ResetProjectButton projectId={project.id} />
         </header>
 
         {reset === "success" && (

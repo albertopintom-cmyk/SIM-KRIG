@@ -237,7 +237,6 @@ export default function ProjectDataFiles({
       <section
         aria-labelledby="excel-import-heading"
         className="mt-12 rounded-xl border border-slate-800 bg-slate-900 p-6 sm:p-8"
-        id="excel-import"
       >
         <div>
           <p className="text-sm font-semibold uppercase tracking-wide text-cyan-300">
