@@ -19,6 +19,8 @@ export const metadata: Metadata = {
   description: "Plataforma de simulación y estimación de recursos minerales.",
 };
 
+export const instant = false;
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
