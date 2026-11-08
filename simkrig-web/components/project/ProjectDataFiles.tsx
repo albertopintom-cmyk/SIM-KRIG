@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import DrillholeSummary from "@/components/project/DrillholeSummary";
 import { importDrillholesFromExcel } from "@/lib/geometry/importDrillholes";
 import { supabase } from "@/lib/supabase";
@@ -84,6 +84,7 @@ export default function ProjectDataFiles({
   initialFiles,
 }: ProjectDataFilesProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const previousInitialFiles = useRef(initialFiles);
   const [files, setFiles] = useState(initialFiles);
   const [summaryRefreshToken, setSummaryRefreshToken] = useState(0);
   const [preview, setPreview] = useState<ExcelPreview | null>(null);
@@ -91,6 +92,14 @@ export default function ProjectDataFiles({
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    setFiles(initialFiles);
+    if (previousInitialFiles.current !== initialFiles) {
+      previousInitialFiles.current = initialFiles;
+      setSummaryRefreshToken((currentToken) => currentToken + 1);
+    }
+  }, [initialFiles]);
 
   async function handleFileChange(
     event: React.ChangeEvent<HTMLInputElement>,
