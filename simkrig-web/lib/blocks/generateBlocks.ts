@@ -1,3 +1,11 @@
+import type { BlockVariableInsert } from "@/types/BlockVariable";
+import type {
+  BlockGeometry,
+  EstimationBlockInsert,
+} from "@/types/EstimationBlock";
+
+export type { BlockVertex } from "@/types/EstimationBlock";
+
 export interface DrillholeForBlock {
   drillhole_id: string;
   easting: number;
@@ -5,27 +13,6 @@ export interface DrillholeForBlock {
   thickness: number | null;
   density: number | null;
   grade: number | null;
-}
-
-export interface BlockVertex {
-  easting: number;
-  northing: number;
-}
-
-export interface BlockVariable {
-  name: string;
-  value: number | null;
-  unit: string;
-}
-
-export interface EstimationBlock {
-  id: string;
-  vertices: readonly [BlockVertex, BlockVertex, BlockVertex, BlockVertex];
-  area: number;
-  avg_thickness: number | null;
-  avg_density: number | null;
-  avg_grade: number | null;
-  variables: readonly BlockVariable[];
 }
 
 type Axis = {
@@ -131,17 +118,32 @@ function getVariables(
   thickness: number | null,
   density: number | null,
   grade: number | null,
-): BlockVariable[] {
+): BlockVariableInsert[] {
   return [
-    { name: "Potencia", value: thickness, unit: "m" },
-    { name: "Densidad", value: density, unit: "t/m³" },
-    { name: "Ley", value: grade, unit: "%" },
+    {
+      variable_name: "Potencia",
+      value: thickness,
+      unit: "m",
+      calculation_method: "Promedio de los cuatro sondajes vecinos",
+    },
+    {
+      variable_name: "Densidad",
+      value: density,
+      unit: "t/m³",
+      calculation_method: "Promedio de los cuatro sondajes vecinos",
+    },
+    {
+      variable_name: "Ley",
+      value: grade,
+      unit: "%",
+      calculation_method: "Promedio de los cuatro sondajes vecinos",
+    },
   ];
 }
 
 export function generateBlocks(
   drillholes: readonly DrillholeForBlock[],
-): EstimationBlock[] {
+): EstimationBlockInsert[] {
   if (drillholes.length === 0) {
     return [];
   }
@@ -183,7 +185,7 @@ export function generateBlocks(
     rows.set(rowIndex, row);
   }
 
-  const blocks: EstimationBlock[] = [];
+  const blocks: EstimationBlockInsert[] = [];
   for (
     let northingIndex = 0;
     northingIndex < northingAxis.coordinates.length - 1;
@@ -208,7 +210,7 @@ export function generateBlocks(
         continue;
       }
 
-      const vertices = [
+      const geometry: BlockGeometry = [
         {
           easting: eastingAxis.coordinates[eastingIndex]!,
           northing: northingAxis.coordinates[northingIndex]!,
@@ -225,7 +227,7 @@ export function generateBlocks(
           easting: eastingAxis.coordinates[eastingIndex]!,
           northing: northingAxis.coordinates[northingIndex + 1]!,
         },
-      ] as const;
+      ];
       const avgThickness = average([
         southWest.thickness,
         southEast.thickness,
@@ -252,12 +254,9 @@ export function generateBlocks(
         northingAxis.coordinates[northingIndex]!;
 
       blocks.push({
-        id: `block-${northingIndex + 1}-${eastingIndex + 1}`,
-        vertices,
+        block_name: `block-${northingIndex + 1}-${eastingIndex + 1}`,
+        geometry,
         area: eastWidth * northWidth,
-        avg_thickness: avgThickness,
-        avg_density: avgDensity,
-        avg_grade: avgGrade,
         variables: getVariables(avgThickness, avgDensity, avgGrade),
       });
     }

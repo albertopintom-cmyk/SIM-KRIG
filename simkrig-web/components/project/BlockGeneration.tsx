@@ -5,8 +5,8 @@ import BlockMap from "@/components/project/BlockMap";
 import {
   generateBlocks,
   type DrillholeForBlock,
-  type EstimationBlock,
 } from "@/lib/blocks/generateBlocks";
+import { saveBlocks } from "@/lib/blocks/saveBlocks";
 import { supabase } from "@/lib/supabase";
 
 type LoadState = "generating" | "empty" | "available" | "error";
@@ -42,7 +42,7 @@ function isDrillholeForBlock(value: unknown): value is DrillholeForBlock {
 export default function BlockGeneration({
   projectId,
 }: BlockGenerationProps) {
-  const [blocks, setBlocks] = useState<EstimationBlock[]>([]);
+  const [savedBlockCount, setSavedBlockCount] = useState(0);
   const [state, setState] = useState<LoadState>("generating");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -86,11 +86,12 @@ export default function BlockGeneration({
         }
 
         const generatedBlocks = generateBlocks(drillholes);
+        const savedCount = await saveBlocks(projectId, generatedBlocks);
         if (!isActive) {
           return;
         }
-        setBlocks(generatedBlocks);
-        setState(generatedBlocks.length > 0 ? "available" : "empty");
+        setSavedBlockCount(savedCount);
+        setState(savedCount > 0 ? "available" : "empty");
       } catch (error) {
         if (!isActive) {
           return;
@@ -163,10 +164,10 @@ export default function BlockGeneration({
       {state === "available" && (
         <>
           <p className="mt-5 rounded-xl border border-emerald-500/30 bg-emerald-950/20 p-4 text-slate-200">
-            Cantidad de bloques generados:{" "}
-            <strong className="text-emerald-200">{blocks.length}</strong>
+            Cantidad de bloques guardados:{" "}
+              <strong className="text-emerald-200">{savedBlockCount}</strong>
           </p>
-          <BlockMap blocks={blocks} />
+            <BlockMap projectId={projectId} />
         </>
       )}
     </section>
