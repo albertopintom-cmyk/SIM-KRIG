@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import DrillholeSummary from "@/components/project/DrillholeSummary";
 import { importDrillholesFromExcel } from "@/lib/geometry/importDrillholes";
 import { supabase } from "@/lib/supabase";
 import type {
@@ -84,6 +85,7 @@ export default function ProjectDataFiles({
 }: ProjectDataFilesProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [files, setFiles] = useState(initialFiles);
+  const [summaryRefreshToken, setSummaryRefreshToken] = useState(0);
   const [preview, setPreview] = useState<ExcelPreview | null>(null);
   const [isReading, setIsReading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -212,6 +214,7 @@ export default function ProjectDataFiles({
     }
 
     setFiles((currentFiles) => [projectFile, ...currentFiles]);
+    setSummaryRefreshToken((currentToken) => currentToken + 1);
     setSuccessMessage(
       preview.result.invalidRows > 0
         ? `Se importaron ${preview.result.validRows} sondajes. Se omitieron ${preview.result.invalidRows} filas con datos requeridos vacíos o inválidos.`
@@ -226,6 +229,11 @@ export default function ProjectDataFiles({
 
   return (
     <>
+      <DrillholeSummary
+        projectId={projectId}
+        refreshToken={summaryRefreshToken}
+      />
+
       <section
         aria-labelledby="excel-import-heading"
         className="mt-12 rounded-xl border border-slate-800 bg-slate-900 p-6 sm:p-8"
