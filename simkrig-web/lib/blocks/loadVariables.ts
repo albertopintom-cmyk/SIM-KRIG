@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase/client";
 import type { BlockVariable } from "@/types/BlockVariable";
 
 const PAGE_SIZE = 1000;

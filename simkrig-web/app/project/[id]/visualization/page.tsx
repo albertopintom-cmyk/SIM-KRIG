@@ -1,11 +1,10 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import DrillholeMap from "@/components/project/DrillholeMap";
-import { supabase } from "@/lib/supabase";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 async function getProject(id: string) {
-  "use cache";
-
+  const supabase = await createServerSupabaseClient();
   const { data: project, error } = await supabase
     .from("projects")
     .select("id, name")

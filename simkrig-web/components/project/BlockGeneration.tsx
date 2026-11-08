@@ -10,7 +10,7 @@ import {
 import { loadPersistedBlocks } from "@/lib/blocks/loadPersistedBlocks";
 import { saveBlocks } from "@/lib/blocks/saveBlocks";
 import type { EstimationBlockInsert } from "@/types/EstimationBlock";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase/client";
 
 type LoadState =
   | "generating"

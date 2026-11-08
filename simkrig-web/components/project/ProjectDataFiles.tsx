@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import DrillholeSummary from "@/components/project/DrillholeSummary";
 import { importDrillholesFromExcel } from "@/lib/geometry/importDrillholes";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase/client";
 import type {
   DrillholeImportResult,
   ImportedDrillhole,

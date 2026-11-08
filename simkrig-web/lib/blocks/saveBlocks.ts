@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase/client";
 import type { EstimationBlockInsert } from "@/types/EstimationBlock";
 
 function validateBlocks(blocks: readonly EstimationBlockInsert[]) {

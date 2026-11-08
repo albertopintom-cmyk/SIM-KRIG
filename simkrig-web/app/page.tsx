@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { supabase } from "@/lib/supabase";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 async function getProjects() {
-  "use cache";
+  const supabase = await createServerSupabaseClient();
   const { data: projects } = await supabase
     .from("projects")
     .select("id, name, description, status")

@@ -1,12 +1,11 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { supabase } from "@/lib/supabase";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
 import ProjectDataFiles from "@/components/project/ProjectDataFiles";
 import ResetProjectButton from "@/components/project/ResetProjectButton";
 
 async function getProject(id: string) {
-  "use cache";
-
+  const supabase = await createServerSupabaseClient();
   const { data: project, error } = await supabase
     .from("projects")
     .select("id, name")
@@ -21,6 +20,7 @@ async function getProject(id: string) {
 }
 
 async function getProjectFiles(id: string) {
+  const supabase = await createServerSupabaseClient();
   const { data: files, error } = await supabase
     .from("project_files")
     .select("id, file_name, file_type, uploaded_at")
