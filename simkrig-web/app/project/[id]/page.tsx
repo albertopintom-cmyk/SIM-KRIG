@@ -94,10 +94,10 @@ async function ProjectContent({
           </h2>
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {stages.map((stage) =>
-              stage === "Datos" ? (
+              stage === "Datos" || stage === "Visualización" ? (
                 <Link
                   className="rounded-xl border border-slate-800 bg-slate-900 p-6 transition hover:border-cyan-400"
-                  href={`/project/${project.id}/data`}
+                  href={`/project/${project.id}/${stage === "Datos" ? "data" : "visualization"}`}
                   key={stage}
                 >
                   <h3 className="text-lg font-semibold">{stage}</h3>
