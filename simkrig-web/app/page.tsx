@@ -30,10 +30,6 @@ async function HomeRedirect() {
     redirect("/login");
   }
 
-  if (process.env.NODE_ENV === "development") {
-    return <pre>{JSON.stringify({ profileUserId: profile.userId })}</pre>;
-  }
-
   if (profile.role === "admin") {
     redirect("/admin/projects");
   }
