@@ -53,6 +53,7 @@ export default function Home() {
 }
 
 async function RoleHome() {
+  console.log("HOME_START");
   await connection();
   const profile = await getCurrentProfile();
   if (!profile || !profile.is_active) redirect("/login");
@@ -68,6 +69,7 @@ async function RoleHome() {
       (project) => project.project_type === "teacher" && project.owner_id === profile.userId,
     );
     const groupProjects = (projects ?? []).filter((project) => project.project_type === "group");
+    console.log("HOME_RENDER");
     return (
       <>
         <section className="mt-12 flex flex-wrap items-center justify-between gap-4">
@@ -113,6 +115,7 @@ async function RoleHome() {
     ? await supabase.from("projects").select("id, name, description, status").in("id", projectIds)
     : { data: [], error: null };
   if (projectsError) throw projectsError;
+  console.log("HOME_RENDER");
   return (
     <section className="mt-12">
       <p className="text-sm font-semibold uppercase tracking-wide text-cyan-300">GRUPO</p>

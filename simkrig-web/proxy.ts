@@ -5,6 +5,7 @@ import {
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function proxy(request: NextRequest) {
+  console.log("PROXY_START");
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -44,6 +45,10 @@ export async function proxy(request: NextRequest) {
   }
 
   if (user) {
+    console.log("PROXY_USER_OK");
+  }
+
+  if (user) {
     const { data: profile, error: profileError } = await supabase
       .from("user_profiles")
       .select("is_active")
@@ -52,6 +57,7 @@ export async function proxy(request: NextRequest) {
     if (profileError) {
       throw profileError;
     }
+    console.log("PROXY_PROFILE_OK");
     if (!profile?.is_active) {
       const { error: signOutError } = await supabase.auth.signOut();
       if (signOutError) {

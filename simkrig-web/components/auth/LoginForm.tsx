@@ -35,6 +35,7 @@ export default function LoginForm() {
     setIsSubmitting(true);
     setErrorMessage(null);
 
+    console.log("LOGIN_START");
     const { error } = await supabase.auth.signInWithPassword({
       email: usernameToAuthEmail(normalizedUsername),
       password,
@@ -46,6 +47,8 @@ export default function LoginForm() {
       return;
     }
 
+    console.log("LOGIN_SUCCESS");
+    console.log("LOGIN_REDIRECT");
     router.replace("/");
     router.refresh();
   }

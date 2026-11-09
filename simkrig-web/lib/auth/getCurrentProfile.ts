@@ -6,6 +6,7 @@ export const getServerSupabaseClientForRequest = cache(
 );
 
 export const getCurrentProfile = cache(async () => {
+  console.log("PROFILE_START");
   const supabase = await getServerSupabaseClientForRequest();
   const {
     data: { user },
@@ -18,6 +19,7 @@ export const getCurrentProfile = cache(async () => {
   if (!user) {
     return null;
   }
+  console.log("PROFILE_USER_OK");
 
   const { data: profile, error: profileError } = await supabase
     .from("user_profiles")
@@ -28,6 +30,7 @@ export const getCurrentProfile = cache(async () => {
   if (profileError) {
     throw profileError;
   }
+  console.log("PROFILE_DB_OK");
 
   return {
     userId: user.id,
