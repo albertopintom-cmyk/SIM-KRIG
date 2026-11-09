@@ -36,18 +36,23 @@ export default function LoginForm() {
     setErrorMessage(null);
 
     try {
+      console.log("LOGIN_START");
       const { error } = await supabase.auth.signInWithPassword({
         email: usernameToAuthEmail(normalizedUsername),
         password,
       });
 
       if (error) {
+        console.error(error);
         setErrorMessage(error.message);
         return;
       }
 
+      console.log("LOGIN_SUCCESS");
+      console.log("LOGIN_REDIRECT");
       router.replace("/");
     } catch (error) {
+      console.error(error);
       setErrorMessage(
         error instanceof Error
           ? error.message

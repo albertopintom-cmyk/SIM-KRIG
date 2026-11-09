@@ -64,7 +64,10 @@ async function RoleHome() {
       .from("projects")
       .select("id, name, description, status, project_type, owner_id")
       .order("created_at", { ascending: false });
-    if (error) throw error;
+    if (error) {
+      console.error(error);
+      throw error;
+    }
     const ownProjects = (projects ?? []).filter(
       (project) => project.project_type === "teacher" && project.owner_id === profile.userId,
     );
@@ -109,12 +112,18 @@ async function RoleHome() {
     .from("project_members")
     .select("project_id")
     .eq("user_id", profile.userId);
-  if (membershipError) throw membershipError;
+  if (membershipError) {
+    console.error(membershipError);
+    throw membershipError;
+  }
   const projectIds = (memberships ?? []).map((membership) => membership.project_id);
   const { data: projects, error: projectsError } = projectIds.length
     ? await supabase.from("projects").select("id, name, description, status").in("id", projectIds)
     : { data: [], error: null };
-  if (projectsError) throw projectsError;
+  if (projectsError) {
+    console.error(projectsError);
+    throw projectsError;
+  }
   console.log("HOME_RENDER");
   return (
     <section className="mt-12">

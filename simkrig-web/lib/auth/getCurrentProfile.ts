@@ -14,6 +14,7 @@ export const getCurrentProfile = cache(async () => {
   } = await supabase.auth.getUser();
 
   if (userError && userError.name !== "AuthSessionMissingError") {
+    console.error(userError);
     throw userError;
   }
   if (!user) {
@@ -28,6 +29,7 @@ export const getCurrentProfile = cache(async () => {
     .maybeSingle();
 
   if (profileError) {
+    console.error(profileError);
     throw profileError;
   }
   console.log("PROFILE_DB_OK");

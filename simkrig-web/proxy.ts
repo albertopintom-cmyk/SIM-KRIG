@@ -41,6 +41,7 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   if (error && error.name !== "AuthSessionMissingError") {
+    console.error(error);
     throw error;
   }
 
@@ -55,14 +56,17 @@ export async function proxy(request: NextRequest) {
       .eq("id", user.id)
       .maybeSingle();
     if (profileError) {
+      console.error(profileError);
       throw profileError;
     }
     console.log("PROXY_PROFILE_OK");
     if (!profile?.is_active) {
       const { error: signOutError } = await supabase.auth.signOut();
       if (signOutError) {
+        console.error(signOutError);
         throw signOutError;
       }
+      console.log("PROXY_REDIRECT_LOGIN");
       const loginResponse = NextResponse.redirect(new URL("/login", request.url));
       response.cookies.getAll().forEach((cookie) => {
         loginResponse.cookies.set(cookie);
@@ -72,6 +76,7 @@ export async function proxy(request: NextRequest) {
   }
 
   if (!user && request.nextUrl.pathname !== "/login") {
+    console.log("PROXY_REDIRECT_LOGIN");
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
@@ -83,6 +88,7 @@ export async function proxy(request: NextRequest) {
     return redirectResponse;
   }
 
+  console.log("PROXY_ALLOW");
   return response;
 }
 
