@@ -145,7 +145,7 @@ export default function ProjectManagement({
                   <tr className="border-t border-slate-800" key={project.id}>
                     <td className="p-4">{project.projectType === "teacher" ? "Docente" : "Grupo"}</td>
                     <td className="p-4">{project.ownerName}</td>
-                    <td className="p-4"><Link className="text-cyan-300 hover:underline" href={`/project/${project.id}`}>{project.name}</Link></td>
+                    <td className="p-4"><Link className="text-cyan-300 hover:underline" href={`/admin/projects/${project.id}`}>{project.name}</Link></td>
                     <td className="p-4">{formatActivity(project.lastActivityAt)}</td>
                     <td className="p-4">
                       {editable ? (
