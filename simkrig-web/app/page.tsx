@@ -1,25 +1,28 @@
 import { Suspense } from "react";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
-import { getCurrentProfile } from "@/lib/auth/getCurrentProfile";
+import {
+  getCurrentProfile,
+  getServerSupabaseClientForRequest,
+} from "@/lib/auth/getCurrentProfile";
 
 export default function Page() {
   return (
-    <main className="min-h-screen bg-slate-950 px-6 py-12 text-slate-100">
-      <div className="mx-auto max-w-4xl">
-        <h1 className="text-3xl font-bold text-cyan-400">SIM-KRIG</h1>
-        <Suspense
-          fallback={<p className="mt-8 text-slate-400">Cargando panel…</p>}
-        >
-          <AdministrationPanel />
-        </Suspense>
-      </div>
-    </main>
+    <Suspense
+      fallback={
+        <main className="min-h-screen bg-slate-950 px-6 py-12 text-slate-100">
+          <p className="mx-auto max-w-4xl text-slate-400">
+            Preparando tu espacio de trabajo…
+          </p>
+        </main>
+      }
+    >
+      <HomeRedirect />
+    </Suspense>
   );
 }
 
-async function AdministrationPanel() {
+async function HomeRedirect() {
   await connection();
   const profile = await getCurrentProfile();
 
@@ -27,45 +30,49 @@ async function AdministrationPanel() {
     redirect("/login");
   }
 
-  return (
-    <section className="mt-8 rounded-xl border border-slate-800 bg-slate-900 p-6">
-      <h2 className="text-2xl font-semibold">Panel de Administración</h2>
-      <dl className="mt-5 grid gap-4 sm:grid-cols-2">
-        <div>
-          <dt className="text-sm text-slate-400">Usuario autenticado</dt>
-          <dd className="mt-1 font-medium text-slate-100">
-            {profile.username ?? profile.email ?? "—"}
-          </dd>
+  if (profile.role === "admin") {
+    redirect("/admin/projects");
+  }
+
+  if (profile.role !== "student_group") {
+    return (
+      <main className="min-h-screen bg-slate-950 px-6 py-12 text-slate-100">
+        <div className="mx-auto max-w-4xl">
+          <h1 className="text-3xl font-bold text-cyan-400">SIM-KRIG</h1>
+          <p className="mt-4 text-slate-300">
+            La cuenta no tiene un rol habilitado para acceder a un espacio de
+            trabajo.
+          </p>
         </div>
-        <div>
-          <dt className="text-sm text-slate-400">Rol</dt>
-          <dd className="mt-1 font-medium text-slate-100">
-            {profile.role ?? "—"}
-          </dd>
+      </main>
+    );
+  }
+
+  const supabase = await getServerSupabaseClientForRequest();
+  const { data: assignment, error } = await supabase
+    .from("project_members")
+    .select("project_id")
+    .eq("user_id", profile.userId)
+    .maybeSingle();
+
+  if (error) {
+    console.error("No se pudo consultar el proyecto asignado:", error);
+    throw error;
+  }
+
+  if (!assignment) {
+    return (
+      <main className="min-h-screen bg-slate-950 px-6 py-12 text-slate-100">
+        <div className="mx-auto max-w-4xl">
+          <h1 className="text-3xl font-bold text-cyan-400">SIM-KRIG</h1>
+          <p className="mt-4 text-slate-300">
+            Tu cuenta todavía no tiene un proyecto asignado. Contacta al
+            administrador para obtener acceso.
+          </p>
         </div>
-      </dl>
-      {profile.role === "admin" && (
-        <nav aria-label="Administración" className="mt-6 flex flex-wrap gap-3">
-          <Link
-            className="rounded-lg border border-cyan-500 px-5 py-3 font-medium text-cyan-200 hover:bg-cyan-500/10"
-            href="/admin/groups"
-          >
-            Grupos
-          </Link>
-          <Link
-            className="rounded-lg border border-cyan-500 px-5 py-3 font-medium text-cyan-200 hover:bg-cyan-500/10"
-            href="/admin/projects"
-          >
-            Proyectos
-          </Link>
-          <Link
-            className="rounded-lg border border-cyan-500 px-5 py-3 font-medium text-cyan-200 hover:bg-cyan-500/10"
-            href="/admin/progress"
-          >
-            Avance
-          </Link>
-        </nav>
-      )}
-    </section>
-  );
+      </main>
+    );
+  }
+
+  redirect(`/project/${assignment.project_id}`);
 }

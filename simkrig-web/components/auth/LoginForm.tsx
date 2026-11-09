@@ -47,7 +47,6 @@ export default function LoginForm() {
         return;
       }
 
-      alert("LOGIN OK");
       router.replace("/");
     } catch (error) {
       console.error(error);
