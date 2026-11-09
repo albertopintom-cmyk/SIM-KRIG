@@ -38,6 +38,9 @@ async function AdminGroupsContent() {
     redirect("/");
   }
 
+  let groups: AdminGroup[] = [];
+  let errorMessage: string | null = null;
+
   try {
     const admin = createSupabaseAdminClient();
     const { data: profiles, error: groupsError } = await admin
@@ -59,23 +62,38 @@ async function AdminGroupsContent() {
       : { data: [], error: null };
     if (projectsError) throw new Error(`Consulta projects asignados: ${projectsError.message}`);
 
-  const projectNames = new Map((projects ?? []).map((project) => [project.id, project.name]));
-  const projectByGroup = new Map(
-    (memberships ?? []).map((membership) => [
-      membership.user_id,
-      {
-        name: projectNames.get(membership.project_id) ?? "Sin asignar",
-      },
-    ]),
-  );
-  const groups: AdminGroup[] = (profiles ?? []).map((group) => ({
-    id: group.id,
-    groupName: group.display_name ?? group.username,
-    username: group.username,
-    isActive: group.is_active,
-    isAssigned: projectByGroup.has(group.id),
-    projectName: projectByGroup.get(group.id)?.name ?? "Sin asignar",
-  }));
+    const projectNames = new Map(
+      (projects ?? []).map((project) => [project.id, project.name]),
+    );
+    const projectByGroup = new Map(
+      (memberships ?? []).map((membership) => [
+        membership.user_id,
+        projectNames.get(membership.project_id) ?? "Sin asignar",
+      ]),
+    );
+    groups = (profiles ?? []).map((group) => ({
+      id: group.id,
+      groupName: group.display_name ?? group.username,
+      username: group.username,
+      isActive: group.is_active,
+      isAssigned: projectByGroup.has(group.id),
+      projectName: projectByGroup.get(group.id) ?? "Sin asignar",
+    }));
+  } catch (error) {
+    errorMessage =
+      typeof error === "object" && error !== null && "message" in error
+        ? String(error.message)
+        : String(error);
+  }
+
+  if (errorMessage) {
+    return (
+      <main className="min-h-screen bg-slate-950 px-6 py-12 text-slate-100">
+        <h1 className="text-2xl font-bold">Error al cargar Grupos</h1>
+        <p className="mt-4 text-red-300" role="alert">{errorMessage}</p>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-12 text-slate-100 sm:py-16">
@@ -92,16 +110,4 @@ async function AdminGroupsContent() {
       </div>
     </main>
   );
-  } catch (error) {
-    const message =
-      typeof error === "object" && error !== null && "message" in error
-        ? String(error.message)
-        : String(error);
-    return (
-      <main className="min-h-screen bg-slate-950 px-6 py-12 text-slate-100">
-        <h1 className="text-2xl font-bold">Error al cargar Grupos</h1>
-        <p className="mt-4 text-red-300" role="alert">{message}</p>
-      </main>
-    );
-  }
 }
