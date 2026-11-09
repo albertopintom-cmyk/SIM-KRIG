@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { connection } from "next/server";
 import { redirect } from "next/navigation";
 import ProjectManagement, { type AdminProject } from "@/components/admin/ProjectManagement";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getCurrentProfile } from "@/lib/auth/getCurrentProfile";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export default function AdminProjectsPage() {
@@ -11,14 +11,9 @@ export default function AdminProjectsPage() {
 
 async function AdminProjectsContent() {
   await connection();
-  const supabase = await createServerSupabaseClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError) throw authError;
-  if (!user) redirect("/login");
-  const { data: profile, error: profileError } = await supabase
-    .from("user_profiles").select("role, is_active").eq("id", user.id).maybeSingle();
-  if (profileError) throw profileError;
-  if (profile?.role !== "admin" || !profile.is_active) redirect("/");
+  const profile = await getCurrentProfile();
+  if (!profile) redirect("/login");
+  if (profile.role !== "admin" || !profile.is_active) redirect("/");
 
   const admin = createSupabaseAdminClient();
   const { data: projectRows, error: projectsError } = await admin.from("projects")
@@ -62,7 +57,7 @@ async function AdminProjectsContent() {
         <p className="text-sm font-semibold uppercase tracking-wide text-cyan-300">ADMINISTRACIÓN</p>
         <h1 className="mt-3 text-3xl font-bold">Todos los proyectos</h1>
         <p className="mt-3 text-slate-400">Administra tus proyectos docentes y consulta los proyectos de grupos.</p>
-        <div className="mt-8"><ProjectManagement currentUserId={user.id} projects={projects} /></div>
+        <div className="mt-8"><ProjectManagement currentUserId={profile.userId} projects={projects} /></div>
       </div>
     </main>
   );

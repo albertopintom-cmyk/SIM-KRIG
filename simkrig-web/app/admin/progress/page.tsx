@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { connection } from "next/server";
 import { redirect } from "next/navigation";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getCurrentProfile } from "@/lib/auth/getCurrentProfile";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 type GroupProgress = {
@@ -19,14 +19,9 @@ export default function AdminProgressPage() {
 
 async function AdminProgressContent() {
   await connection();
-  const sessionClient = await createServerSupabaseClient();
-  const { data: { user }, error: authError } = await sessionClient.auth.getUser();
-  if (authError) throw authError;
-  if (!user) redirect("/login");
-  const { data: profile, error: profileError } = await sessionClient
-    .from("user_profiles").select("role, is_active").eq("id", user.id).maybeSingle();
-  if (profileError) throw profileError;
-  if (profile?.role !== "admin" || !profile.is_active) redirect("/");
+  const profile = await getCurrentProfile();
+  if (!profile) redirect("/login");
+  if (profile.role !== "admin" || !profile.is_active) redirect("/");
 
   const admin = createSupabaseAdminClient();
   const { data: projects, error: projectsError } = await admin.from("projects")

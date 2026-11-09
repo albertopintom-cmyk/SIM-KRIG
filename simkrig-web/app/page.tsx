@@ -2,7 +2,10 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { connection } from "next/server";
 import { redirect } from "next/navigation";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import {
+  getCurrentProfile,
+  getServerSupabaseClientForRequest,
+} from "@/lib/auth/getCurrentProfile";
 
 type Project = {
   id: string;
@@ -51,27 +54,18 @@ export default function Home() {
 
 async function RoleHome() {
   await connection();
-  const supabase = await createServerSupabaseClient();
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
-  if (userError) throw userError;
-  if (!user) redirect("/login");
-
-  const { data: profile, error: profileError } = await supabase
-    .from("user_profiles")
-    .select("role, display_name, is_active")
-    .eq("id", user.id)
-    .maybeSingle();
-  if (profileError) throw profileError;
-  if (!profile?.is_active) redirect("/login");
+  const profile = await getCurrentProfile();
+  if (!profile || !profile.is_active) redirect("/login");
 
   if (profile.role === "admin") {
+    const supabase = await getServerSupabaseClientForRequest();
     const { data: projects, error } = await supabase
       .from("projects")
       .select("id, name, description, status, project_type, owner_id")
       .order("created_at", { ascending: false });
     if (error) throw error;
     const ownProjects = (projects ?? []).filter(
-      (project) => project.project_type === "teacher" && project.owner_id === user.id,
+      (project) => project.project_type === "teacher" && project.owner_id === profile.userId,
     );
     const groupProjects = (projects ?? []).filter((project) => project.project_type === "group");
     return (
@@ -108,10 +102,11 @@ async function RoleHome() {
     );
   }
 
+  const supabase = await getServerSupabaseClientForRequest();
   const { data: memberships, error: membershipError } = await supabase
     .from("project_members")
     .select("project_id")
-    .eq("user_id", user.id);
+    .eq("user_id", profile.userId);
   if (membershipError) throw membershipError;
   const projectIds = (memberships ?? []).map((membership) => membership.project_id);
   const { data: projects, error: projectsError } = projectIds.length
@@ -121,7 +116,7 @@ async function RoleHome() {
   return (
     <section className="mt-12">
       <p className="text-sm font-semibold uppercase tracking-wide text-cyan-300">GRUPO</p>
-      <h2 className="mt-2 text-2xl font-semibold">{profile.display_name ?? "Mi Grupo"}</h2>
+      <h2 className="mt-2 text-2xl font-semibold">{profile.displayName ?? "Mi Grupo"}</h2>
       {(projects ?? []).map((project) => (
         <article className="mt-6 rounded-xl border border-slate-800 bg-slate-900 p-6" key={project.id}>
           <h3 className="text-xl font-semibold">{project.name}</h3>

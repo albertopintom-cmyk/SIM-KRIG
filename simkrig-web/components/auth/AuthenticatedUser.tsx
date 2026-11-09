@@ -1,31 +1,11 @@
 import Link from "next/link";
-import { connection } from "next/server";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getCurrentProfile } from "@/lib/auth/getCurrentProfile";
 import SignOutButton from "@/components/auth/SignOutButton";
 
 export default async function AuthenticatedUser() {
-  await connection();
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError && userError.name !== "AuthSessionMissingError") {
-    throw userError;
-  }
-  if (!user) {
+  const profile = await getCurrentProfile();
+  if (!profile) {
     return null;
-  }
-
-  const { data: profile, error: profileError } = await supabase
-    .from("user_profiles")
-    .select("username, role")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (profileError) {
-    throw profileError;
   }
 
   return (
@@ -34,14 +14,14 @@ export default async function AuthenticatedUser() {
         <p className="text-sm text-slate-300">
           Sesión:{" "}
           <strong className="text-slate-100">
-            {profile?.username ?? user.email}
+            {profile.username ?? profile.email}
           </strong>
-          {profile?.role && (
+          {profile.role && (
             <span className="ml-2 text-slate-500">({profile.role})</span>
           )}
         </p>
         <div className="flex items-center gap-4">
-          {profile?.role === "admin" && (
+          {profile.role === "admin" && (
             <>
               <Link className="text-sm font-medium text-cyan-300 hover:text-cyan-200" href="/admin/groups">Grupos</Link>
               <Link className="text-sm font-medium text-cyan-300 hover:text-cyan-200" href="/admin/progress">Avance</Link>

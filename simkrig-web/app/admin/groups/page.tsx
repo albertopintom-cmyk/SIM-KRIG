@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import GroupCreationForm from "@/components/admin/GroupCreationForm";
 import GroupManagement, { type AdminGroup } from "@/components/admin/GroupManagement";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getCurrentProfile } from "@/lib/auth/getCurrentProfile";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export default function AdminGroupsPage() {
@@ -30,29 +30,11 @@ export default function AdminGroupsPage() {
 
 async function AdminGroupsContent() {
   await connection();
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError) {
-    throw userError;
-  }
-  if (!user) {
+  const profile = await getCurrentProfile();
+  if (!profile) {
     redirect("/login");
   }
-
-  const { data: profile, error: profileError } = await supabase
-    .from("user_profiles")
-    .select("role, is_active")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (profileError) {
-    throw profileError;
-  }
-  if (profile?.role !== "admin" || !profile.is_active) {
+  if (profile.role !== "admin" || !profile.is_active) {
     redirect("/");
   }
 
