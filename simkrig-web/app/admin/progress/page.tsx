@@ -23,6 +23,7 @@ async function AdminProgressContent() {
   if (!profile) redirect("/login");
   if (profile.role !== "admin" || !profile.is_active) redirect("/");
 
+  try {
   const admin = createSupabaseAdminClient();
   const { data: projects, error: projectsError } = await admin.from("projects")
     .select("id, name, last_activity_at")
@@ -94,4 +95,13 @@ async function AdminProgressContent() {
       </div>
     </main>
   );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return (
+      <main className="min-h-screen bg-slate-950 px-6 py-12 text-slate-100">
+        <h1 className="text-2xl font-bold">Error al cargar Avance</h1>
+        <p className="mt-4 text-red-300" role="alert">{message}</p>
+      </main>
+    );
+  }
 }

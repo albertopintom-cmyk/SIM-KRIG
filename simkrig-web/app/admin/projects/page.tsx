@@ -15,41 +15,42 @@ async function AdminProjectsContent() {
   if (!profile) redirect("/login");
   if (profile.role !== "admin" || !profile.is_active) redirect("/");
 
-  const admin = createSupabaseAdminClient();
-  const { data: projectRows, error: projectsError } = await admin.from("projects")
-    .select("id, name, description, project_type, owner_id, last_activity_at")
-    .order("created_at", { ascending: false });
-  if (projectsError) throw projectsError;
-  const projectIds = (projectRows ?? []).map((project) => project.id);
-  const { data: memberships, error: membersError } = projectIds.length
-    ? await admin.from("project_members").select("user_id, project_id").in("project_id", projectIds)
-    : { data: [], error: null };
-  if (membersError) throw membersError;
-  const userIds = [...new Set([
-    ...(projectRows ?? []).map((project) => project.owner_id).filter((id): id is string => Boolean(id)),
-    ...(memberships ?? []).map((membership) => membership.user_id),
-  ])];
-  const { data: profiles, error: profilesError } = userIds.length
-    ? await admin.from("user_profiles").select("id, username, display_name").in("id", userIds)
-    : { data: [], error: null };
-  if (profilesError) throw profilesError;
-  const profileById = new Map((profiles ?? []).map((item) => [item.id, item]));
-  const groupByProject = new Map((memberships ?? []).map((member) => [member.project_id, member.user_id]));
-  const projects: AdminProject[] = (projectRows ?? []).map((project) => {
-    const assignedUserId = groupByProject.get(project.id);
-    const ownerProfile = profileById.get(assignedUserId ?? project.owner_id ?? "");
-    return {
-      id: project.id,
-      name: project.name,
-      description: project.description,
-      projectType: project.project_type,
-      ownerId: project.owner_id,
-      ownerName: project.project_type === "group"
-        ? ownerProfile?.display_name ?? ownerProfile?.username ?? "Grupo sin asignar"
-        : ownerProfile?.username ?? "Sin propietario",
-      lastActivityAt: project.last_activity_at,
-    };
-  });
+  try {
+    const admin = createSupabaseAdminClient();
+    const { data: projectRows, error: projectsError } = await admin.from("projects")
+      .select("id, name, description, project_type, owner_id, last_activity_at")
+      .order("created_at", { ascending: false });
+    if (projectsError) throw projectsError;
+    const projectIds = (projectRows ?? []).map((project) => project.id);
+    const { data: memberships, error: membersError } = projectIds.length
+      ? await admin.from("project_members").select("user_id, project_id").in("project_id", projectIds)
+      : { data: [], error: null };
+    if (membersError) throw membersError;
+    const userIds = [...new Set([
+      ...(projectRows ?? []).map((project) => project.owner_id).filter((id): id is string => Boolean(id)),
+      ...(memberships ?? []).map((membership) => membership.user_id),
+    ])];
+    const { data: profiles, error: profilesError } = userIds.length
+      ? await admin.from("user_profiles").select("id, username, display_name").in("id", userIds)
+      : { data: [], error: null };
+    if (profilesError) throw profilesError;
+    const profileById = new Map((profiles ?? []).map((item) => [item.id, item]));
+    const groupByProject = new Map((memberships ?? []).map((member) => [member.project_id, member.user_id]));
+    const projects: AdminProject[] = (projectRows ?? []).map((project) => {
+      const assignedUserId = groupByProject.get(project.id);
+      const ownerProfile = profileById.get(assignedUserId ?? project.owner_id ?? "");
+      return {
+        id: project.id,
+        name: project.name,
+        description: project.description,
+        projectType: project.project_type,
+        ownerId: project.owner_id,
+        ownerName: project.project_type === "group"
+          ? ownerProfile?.display_name ?? ownerProfile?.username ?? "Grupo sin asignar"
+          : ownerProfile?.username ?? "Sin propietario",
+        lastActivityAt: project.last_activity_at,
+      };
+    });
 
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-12 text-slate-100">
@@ -61,4 +62,13 @@ async function AdminProjectsContent() {
       </div>
     </main>
   );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return (
+      <main className="min-h-screen bg-slate-950 px-6 py-12 text-slate-100">
+        <h1 className="text-2xl font-bold">Error al cargar Proyectos</h1>
+        <p className="mt-4 text-red-300" role="alert">{message}</p>
+      </main>
+    );
+  }
 }

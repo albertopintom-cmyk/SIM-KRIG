@@ -38,31 +38,27 @@ async function AdminGroupsContent() {
     redirect("/");
   }
 
-  const admin = createSupabaseAdminClient();
-  const { data: profiles, error: groupsError } = await admin
-    .from("user_profiles")
-    .select("id, username, display_name, is_active")
-    .eq("role", "student_group")
-    .order("created_at", { ascending: false });
-  if (groupsError) {
-    throw groupsError;
-  }
+  try {
+    const admin = createSupabaseAdminClient();
+    const { data: profiles, error: groupsError } = await admin
+      .from("user_profiles")
+      .select("id, username, display_name, is_active")
+      .eq("role", "student_group")
+      .order("created_at", { ascending: false });
+    if (groupsError) throw groupsError;
 
-  const groupIds = (profiles ?? []).map((group) => group.id);
-  const { data: memberships, error: membershipError } = groupIds.length
-    ? await admin.from("project_members").select("user_id, project_id").in("user_id", groupIds)
-    : { data: [], error: null };
-  if (membershipError) {
-    throw membershipError;
-  }
+    const groupIds = (profiles ?? []).map((group) => group.id);
+    const { data: memberships, error: membershipError } = groupIds.length
+      ? await admin.from("project_members").select("user_id, project_id").in("user_id", groupIds)
+      : { data: [], error: null };
+    if (membershipError) throw membershipError;
 
-  const projectIds = (memberships ?? []).map((membership) => membership.project_id);
-  const { data: projects, error: projectsError } = projectIds.length
-    ? await admin.from("projects").select("id, name").in("id", projectIds)
-    : { data: [], error: null };
-  if (projectsError) {
-    throw projectsError;
-  }
+    const projectIds = (memberships ?? []).map((membership) => membership.project_id);
+    const { data: projects, error: projectsError } = projectIds.length
+      ? await admin.from("projects").select("id, name").in("id", projectIds)
+      : { data: [], error: null };
+    if (projectsError) throw projectsError;
+
   const projectNames = new Map((projects ?? []).map((project) => [project.id, project.name]));
   const groupProjects = new Map((memberships ?? []).map((membership) => [
     membership.user_id,
@@ -91,4 +87,13 @@ async function AdminGroupsContent() {
       </div>
     </main>
   );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return (
+      <main className="min-h-screen bg-slate-950 px-6 py-12 text-slate-100">
+        <h1 className="text-2xl font-bold">Error al cargar Grupos</h1>
+        <p className="mt-4 text-red-300" role="alert">{message}</p>
+      </main>
+    );
+  }
 }
