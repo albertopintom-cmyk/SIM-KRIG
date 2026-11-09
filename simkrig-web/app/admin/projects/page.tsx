@@ -20,12 +20,12 @@ async function AdminProjectsContent() {
     const { data: projectRows, error: projectsError } = await admin.from("projects")
       .select("id, name, description, project_type, owner_id, last_activity_at")
       .order("created_at", { ascending: false });
-    if (projectsError) throw projectsError;
+    if (projectsError) throw new Error(`Consulta projects: ${projectsError.message}`);
     const projectIds = (projectRows ?? []).map((project) => project.id);
     const { data: memberships, error: membersError } = projectIds.length
       ? await admin.from("project_members").select("user_id, project_id").in("project_id", projectIds)
       : { data: [], error: null };
-    if (membersError) throw membersError;
+    if (membersError) throw new Error(`Consulta project_members: ${membersError.message}`);
     const userIds = [...new Set([
       ...(projectRows ?? []).map((project) => project.owner_id).filter((id): id is string => Boolean(id)),
       ...(memberships ?? []).map((membership) => membership.user_id),
@@ -33,7 +33,7 @@ async function AdminProjectsContent() {
     const { data: profiles, error: profilesError } = userIds.length
       ? await admin.from("user_profiles").select("id, username, display_name").in("id", userIds)
       : { data: [], error: null };
-    if (profilesError) throw profilesError;
+    if (profilesError) throw new Error(`Consulta user_profiles (propietarios): ${profilesError.message}`);
     const profileById = new Map((profiles ?? []).map((item) => [item.id, item]));
     const groupByProject = new Map((memberships ?? []).map((member) => [member.project_id, member.user_id]));
     const projects: AdminProject[] = (projectRows ?? []).map((project) => {
@@ -63,7 +63,10 @@ async function AdminProjectsContent() {
     </main>
   );
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message =
+      typeof error === "object" && error !== null && "message" in error
+        ? String(error.message)
+        : String(error);
     return (
       <main className="min-h-screen bg-slate-950 px-6 py-12 text-slate-100">
         <h1 className="text-2xl font-bold">Error al cargar Proyectos</h1>

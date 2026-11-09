@@ -45,19 +45,19 @@ async function AdminGroupsContent() {
       .select("id, username, display_name, is_active")
       .eq("role", "student_group")
       .order("created_at", { ascending: false });
-    if (groupsError) throw groupsError;
+    if (groupsError) throw new Error(`Consulta user_profiles (grupos): ${groupsError.message}`);
 
     const groupIds = (profiles ?? []).map((group) => group.id);
     const { data: memberships, error: membershipError } = groupIds.length
       ? await admin.from("project_members").select("user_id, project_id").in("user_id", groupIds)
       : { data: [], error: null };
-    if (membershipError) throw membershipError;
+    if (membershipError) throw new Error(`Consulta project_members: ${membershipError.message}`);
 
     const projectIds = (memberships ?? []).map((membership) => membership.project_id);
     const { data: projects, error: projectsError } = projectIds.length
       ? await admin.from("projects").select("id, name").in("id", projectIds)
       : { data: [], error: null };
-    if (projectsError) throw projectsError;
+    if (projectsError) throw new Error(`Consulta projects asignados: ${projectsError.message}`);
 
   const projectNames = new Map((projects ?? []).map((project) => [project.id, project.name]));
   const groupProjects = new Map((memberships ?? []).map((membership) => [
@@ -88,7 +88,10 @@ async function AdminGroupsContent() {
     </main>
   );
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message =
+      typeof error === "object" && error !== null && "message" in error
+        ? String(error.message)
+        : String(error);
     return (
       <main className="min-h-screen bg-slate-950 px-6 py-12 text-slate-100">
         <h1 className="text-2xl font-bold">Error al cargar Grupos</h1>

@@ -29,17 +29,17 @@ async function AdminProgressContent() {
     .select("id, name, last_activity_at")
     .eq("project_type", "group")
     .order("last_activity_at", { ascending: false });
-  if (projectsError) throw projectsError;
+  if (projectsError) throw new Error(`Consulta projects: ${projectsError.message}`);
   const projectIds = (projects ?? []).map((project) => project.id);
   const { data: memberships, error: membershipsError } = projectIds.length
     ? await admin.from("project_members").select("user_id, project_id").in("project_id", projectIds)
     : { data: [], error: null };
-  if (membershipsError) throw membershipsError;
+  if (membershipsError) throw new Error(`Consulta project_members: ${membershipsError.message}`);
   const userIds = (memberships ?? []).map((membership) => membership.user_id);
   const { data: profiles, error: profilesError } = userIds.length
     ? await admin.from("user_profiles").select("id, username, display_name").in("id", userIds)
     : { data: [], error: null };
-  if (profilesError) throw profilesError;
+  if (profilesError) throw new Error(`Consulta user_profiles (grupos): ${profilesError.message}`);
   const profilesById = new Map((profiles ?? []).map((item) => [item.id, item]));
   const membersByProject = new Map((memberships ?? []).map((item) => [item.project_id, item.user_id]));
 
@@ -50,9 +50,9 @@ async function AdminProgressContent() {
       admin.from("cutoff_runs").select("created_at").eq("project_id", project.id)
         .order("created_at", { ascending: false }).limit(1).maybeSingle(),
     ]);
-    if (files.error) throw files.error;
-    if (blocks.error) throw blocks.error;
-    if (cutoff.error) throw cutoff.error;
+    if (files.error) throw new Error(`Consulta project_files: ${files.error.message}`);
+    if (blocks.error) throw new Error(`Consulta estimation_blocks: ${blocks.error.message}`);
+    if (cutoff.error) throw new Error(`Consulta cutoff_runs: ${cutoff.error.message}`);
     const group = profilesById.get(membersByProject.get(project.id) ?? "");
     return {
       groupName: group?.display_name ?? group?.username ?? "Grupo sin asignar",
@@ -96,7 +96,10 @@ async function AdminProgressContent() {
     </main>
   );
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message =
+      typeof error === "object" && error !== null && "message" in error
+        ? String(error.message)
+        : String(error);
     return (
       <main className="min-h-screen bg-slate-950 px-6 py-12 text-slate-100">
         <h1 className="text-2xl font-bold">Error al cargar Avance</h1>
