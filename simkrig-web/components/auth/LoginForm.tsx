@@ -35,22 +35,27 @@ export default function LoginForm() {
     setIsSubmitting(true);
     setErrorMessage(null);
 
-    console.log("LOGIN_START");
-    const { error } = await supabase.auth.signInWithPassword({
-      email: usernameToAuthEmail(normalizedUsername),
-      password,
-    });
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: usernameToAuthEmail(normalizedUsername),
+        password,
+      });
 
-    if (error) {
-      setErrorMessage("Usuario o contraseña incorrectos.");
+      if (error) {
+        setErrorMessage(error.message);
+        return;
+      }
+
+      router.replace("/");
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Ocurrió un error inesperado al iniciar sesión.",
+      );
+    } finally {
       setIsSubmitting(false);
-      return;
     }
-
-    console.log("LOGIN_SUCCESS");
-    console.log("LOGIN_REDIRECT");
-    router.replace("/");
-    router.refresh();
   }
 
   return (
