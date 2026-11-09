@@ -171,6 +171,10 @@ export default function GroupCreationForm() {
               <dt className="text-sm text-slate-400">Proyecto</dt>
               <dd className="mt-1 text-slate-100">{createdGroup.projectName}</dd>
             </div>
+            <div className="sm:col-span-2">
+              <dt className="text-sm text-slate-400">Estado de asignación</dt>
+              <dd className="mt-1 text-emerald-300">Asignado correctamente</dd>
+            </div>
           </dl>
           <p className="mt-4 text-sm text-amber-200">
             Guarda la contraseña temporal ahora; no se volverá a mostrar.

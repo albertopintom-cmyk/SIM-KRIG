@@ -60,16 +60,21 @@ async function AdminGroupsContent() {
     if (projectsError) throw new Error(`Consulta projects asignados: ${projectsError.message}`);
 
   const projectNames = new Map((projects ?? []).map((project) => [project.id, project.name]));
-  const groupProjects = new Map((memberships ?? []).map((membership) => [
-    membership.user_id,
-    projectNames.get(membership.project_id) ?? "Sin asignar",
-  ]));
+  const projectByGroup = new Map(
+    (memberships ?? []).map((membership) => [
+      membership.user_id,
+      {
+        name: projectNames.get(membership.project_id) ?? "Sin asignar",
+      },
+    ]),
+  );
   const groups: AdminGroup[] = (profiles ?? []).map((group) => ({
     id: group.id,
     groupName: group.display_name ?? group.username,
     username: group.username,
     isActive: group.is_active,
-    projectName: groupProjects.get(group.id) ?? "Sin asignar",
+    isAssigned: projectByGroup.has(group.id),
+    projectName: projectByGroup.get(group.id)?.name ?? "Sin asignar",
   }));
 
   return (

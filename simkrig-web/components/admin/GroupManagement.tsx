@@ -7,6 +7,7 @@ export type AdminGroup = {
   groupName: string;
   username: string;
   isActive: boolean;
+  isAssigned: boolean;
   projectName: string;
 };
 
@@ -75,6 +76,9 @@ export default function GroupManagement({ groups }: { groups: AdminGroup[] }) {
                   <h3 className="font-semibold">{group.groupName}</h3>
                   <p className="mt-1 text-sm text-slate-400">
                     Usuario: {group.username} · Proyecto: {group.projectName || "Sin asignar"}
+                  </p>
+                  <p className={`mt-2 text-sm ${group.isAssigned ? "text-emerald-300" : "text-amber-300"}`}>
+                    Asignación: {group.isAssigned ? "Asignado" : "Sin asignar"}
                   </p>
                   <p className={`mt-2 text-sm ${group.isActive ? "text-emerald-300" : "text-amber-300"}`}>
                     {group.isActive ? "Activo" : "Desactivado"}
