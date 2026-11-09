@@ -56,21 +56,24 @@ async function HomeRedirect() {
     .maybeSingle();
 
   if (error) {
-    console.error("No se pudo consultar el proyecto asignado:", error);
     throw error;
   }
 
   if (!assignment) {
     return (
-      <main className="min-h-screen bg-slate-950 px-6 py-12 text-slate-100">
-        <div className="mx-auto max-w-4xl">
-          <h1 className="text-3xl font-bold text-cyan-400">SIM-KRIG</h1>
-          <p className="mt-4 text-slate-300">
-            Tu cuenta todavía no tiene un proyecto asignado. Contacta al
-            administrador para obtener acceso.
-          </p>
-        </div>
-      </main>
+      <pre>
+        {JSON.stringify(
+          {
+            authUid: profile.userId,
+            profileUserId: profile.userId,
+            membershipRows: 0,
+            membershipResult: assignment,
+            projectId: null,
+          },
+          null,
+          2,
+        )}
+      </pre>
     );
   }
 
