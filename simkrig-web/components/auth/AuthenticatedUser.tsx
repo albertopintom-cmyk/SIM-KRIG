@@ -42,12 +42,11 @@ export default async function AuthenticatedUser() {
         </p>
         <div className="flex items-center gap-4">
           {profile?.role === "admin" && (
-            <Link
-              className="text-sm font-medium text-cyan-300 hover:text-cyan-200"
-              href="/admin/groups"
-            >
-              Administración
-            </Link>
+            <>
+              <Link className="text-sm font-medium text-cyan-300 hover:text-cyan-200" href="/admin/groups">Grupos</Link>
+              <Link className="text-sm font-medium text-cyan-300 hover:text-cyan-200" href="/admin/progress">Avance</Link>
+              <Link className="text-sm font-medium text-cyan-300 hover:text-cyan-200" href="/admin/projects">Proyectos</Link>
+            </>
           )}
           <SignOutButton />
         </div>

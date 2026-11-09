@@ -102,6 +102,8 @@ export default function CutoffGradeAnalysis({
   const [state, setState] = useState<LoadState>("loading");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [cutoffGrade, setCutoffGrade] = useState(0);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -177,6 +179,39 @@ export default function CutoffGradeAnalysis({
     () => getCutoffAnalysis(blocks, selectedCutoffGrade),
     [blocks, selectedCutoffGrade],
   );
+  async function saveCutoffRun() {
+    if (!result.analysis || isSaving) return;
+    setIsSaving(true);
+    setSaveMessage(null);
+    try {
+      const response = await fetch(`/api/projects/${projectId}/cutoff-runs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          cutoffGrade: result.analysis.cutoffGrade,
+          recoverableTonnage: result.analysis.recoverableTonnage,
+          averageGrade: result.analysis.recoverableAverageGrade,
+          fineMetal: result.analysis.recoverableFineMetal,
+          mineralBlockCount: result.analysis.mineralBlockCount,
+          wasteBlockCount: result.analysis.wasteBlockCount,
+        }),
+      });
+      const payload: unknown = await response.json();
+      if (!response.ok) {
+        const detail =
+          typeof payload === "object" && payload !== null && "error" in payload &&
+          typeof payload.error === "string"
+            ? payload.error
+            : "No se pudo registrar el cálculo.";
+        throw new Error(detail);
+      }
+      setSaveMessage("Cálculo registrado en el avance del grupo.");
+    } catch (error) {
+      setSaveMessage(error instanceof Error ? error.message : "Error inesperado al guardar.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
   const curveSeries = useMemo(
     () => [
       {
@@ -320,6 +355,17 @@ export default function CutoffGradeAnalysis({
                   value={numberFormat.format(result.analysis.wasteBlockCount)}
                 />
               </section>
+              <div className="mt-5 flex flex-wrap items-center gap-4">
+                <button
+                  className="rounded-lg border border-cyan-400 px-5 py-3 text-sm font-semibold text-cyan-200 disabled:opacity-50"
+                  disabled={isSaving}
+                  onClick={() => void saveCutoffRun()}
+                  type="button"
+                >
+                  {isSaving ? "Guardando…" : "Registrar cálculo de ley de corte"}
+                </button>
+                {saveMessage && <p className="text-sm text-slate-300" role="status">{saveMessage}</p>}
+              </div>
 
               <details
                 aria-label="Detalle de bloques y clasificación"

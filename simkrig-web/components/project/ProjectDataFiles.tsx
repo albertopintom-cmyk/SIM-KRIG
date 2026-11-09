@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import DrillholeSummary from "@/components/project/DrillholeSummary";
 import { importDrillholesFromExcel } from "@/lib/geometry/importDrillholes";
 import { supabase } from "@/lib/supabase/client";
@@ -84,22 +84,21 @@ export default function ProjectDataFiles({
   initialFiles,
 }: ProjectDataFilesProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const previousInitialFiles = useRef(initialFiles);
-  const [files, setFiles] = useState(initialFiles);
-  const [summaryRefreshToken, setSummaryRefreshToken] = useState(0);
+  const [fileState, setFileState] = useState(() => ({
+    initialFiles,
+    files: initialFiles,
+    summaryRefreshToken: 0,
+  }));
+  const files =
+    fileState.initialFiles === initialFiles ? fileState.files : initialFiles;
+  const summaryRefreshToken =
+    fileState.summaryRefreshToken +
+    (fileState.initialFiles === initialFiles ? 0 : 1);
   const [preview, setPreview] = useState<ExcelPreview | null>(null);
   const [isReading, setIsReading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-
-  useEffect(() => {
-    setFiles(initialFiles);
-    if (previousInitialFiles.current !== initialFiles) {
-      previousInitialFiles.current = initialFiles;
-      setSummaryRefreshToken((currentToken) => currentToken + 1);
-    }
-  }, [initialFiles]);
 
   async function handleFileChange(
     event: React.ChangeEvent<HTMLInputElement>,
@@ -222,8 +221,22 @@ export default function ProjectDataFiles({
       return;
     }
 
-    setFiles((currentFiles) => [projectFile, ...currentFiles]);
-    setSummaryRefreshToken((currentToken) => currentToken + 1);
+    setFileState((currentState) => {
+      const receivedUpdatedInitialFiles =
+        currentState.initialFiles !== initialFiles;
+      return {
+        initialFiles,
+        files: [
+          projectFile,
+          ...(receivedUpdatedInitialFiles
+            ? initialFiles
+            : currentState.files),
+        ],
+        summaryRefreshToken:
+          currentState.summaryRefreshToken +
+          (receivedUpdatedInitialFiles ? 2 : 1),
+      };
+    });
     setSuccessMessage(
       preview.result.invalidRows > 0
         ? `Se importaron ${preview.result.validRows} sondajes. Se omitieron ${preview.result.invalidRows} filas con datos requeridos vacíos o inválidos.`

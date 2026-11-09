@@ -9,12 +9,12 @@ type CreatedProject = {
   name: string;
 };
 
-function getGroupName(value: unknown): string | null {
+function getText(value: unknown, maximumLength: number): string | null {
   if (typeof value !== "string") {
     return null;
   }
-  const groupName = value.trim();
-  return groupName.length > 0 && groupName.length <= 100 ? groupName : null;
+  const text = value.trim();
+  return text.length > 0 && text.length <= maximumLength ? text : null;
 }
 
 export async function POST(request: NextRequest) {
@@ -30,13 +30,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "El cuerpo de la solicitud no es válido." }, { status: 400 });
   }
 
-  const groupName =
-    typeof body === "object" && body !== null && "groupName" in body
-      ? getGroupName(body.groupName)
-      : null;
-  if (!groupName) {
+  const input =
+    typeof body === "object" && body !== null
+      ? body as Record<string, unknown>
+      : {};
+  const groupName = getText(input.groupName, 100);
+  const username =
+    typeof input.username === "string" ? input.username.trim().toLowerCase() : "";
+  const projectName = getText(input.projectName, 100);
+  if (!groupName || !projectName || !/^[a-z0-9_]{3,64}$/.test(username) || username === "admin") {
     return NextResponse.json(
-      { error: "Ingresa un nombre de grupo de hasta 100 caracteres." },
+      {
+        error:
+          "Ingresa un nombre de grupo, un usuario válido (3 a 64 caracteres: letras minúsculas, números o _) y un proyecto.",
+      },
       { status: 400 },
     );
   }
@@ -53,7 +60,7 @@ export async function POST(request: NextRequest) {
 
   const { data: profile, error: profileError } = await supabase
     .from("user_profiles")
-    .select("role")
+    .select("role, is_active")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -63,7 +70,7 @@ export async function POST(request: NextRequest) {
       { status: 500 },
     );
   }
-  if (profile?.role !== "admin") {
+  if (profile?.role !== "admin" || !profile.is_active) {
     return NextResponse.json({ error: "Acceso exclusivo para administradores." }, { status: 403 });
   }
 
@@ -82,18 +89,19 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { data: username, error: usernameError } = await admin.rpc(
-    "reserve_next_group_username",
-  );
-  if (usernameError || typeof username !== "string") {
+  const { data: existingProfile, error: usernameError } = await admin
+    .from("user_profiles")
+    .select("id")
+    .eq("username", username)
+    .maybeSingle();
+  if (usernameError) {
     return NextResponse.json(
-      {
-        error: usernameError
-          ? `No se pudo reservar el usuario del grupo: ${usernameError.message}`
-          : "La base de datos devolvió un usuario inválido.",
-      },
+      { error: `No se pudo validar el usuario: ${usernameError.message}` },
       { status: 500 },
     );
+  }
+  if (existingProfile) {
+    return NextResponse.json({ error: "Ese usuario ya está registrado." }, { status: 409 });
   }
 
   const temporaryPassword = randomBytes(18).toString("base64url");
@@ -122,7 +130,13 @@ export async function POST(request: NextRequest) {
   const { error: profileUpsertError } = await admin
     .from("user_profiles")
     .upsert(
-      { id: userId, username, role: "student_group" },
+      {
+        id: userId,
+        username,
+        role: "student_group",
+        display_name: groupName,
+        is_active: true,
+      },
       { onConflict: "id" },
     );
 
@@ -132,9 +146,11 @@ export async function POST(request: NextRequest) {
     const { data: project, error: projectError } = await admin
       .from("projects")
       .insert({
-        name: groupName,
+        name: projectName,
         description: `Proyecto asignado al grupo ${username}.`,
         status: "active",
+        project_type: "group",
+        owner_id: user.id,
       })
       .select("id, name")
       .single();
@@ -193,6 +209,7 @@ export async function POST(request: NextRequest) {
   }
 
   return NextResponse.json({
+    groupName,
     username,
     temporaryPassword,
     projectId: createdProject.id,

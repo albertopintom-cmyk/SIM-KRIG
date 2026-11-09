@@ -43,6 +43,28 @@ export async function proxy(request: NextRequest) {
     throw error;
   }
 
+  if (user) {
+    const { data: profile, error: profileError } = await supabase
+      .from("user_profiles")
+      .select("is_active")
+      .eq("id", user.id)
+      .maybeSingle();
+    if (profileError) {
+      throw profileError;
+    }
+    if (!profile?.is_active) {
+      const { error: signOutError } = await supabase.auth.signOut();
+      if (signOutError) {
+        throw signOutError;
+      }
+      const loginResponse = NextResponse.redirect(new URL("/login", request.url));
+      response.cookies.getAll().forEach((cookie) => {
+        loginResponse.cookies.set(cookie);
+      });
+      return loginResponse;
+    }
+  }
+
   if (!user && request.nextUrl.pathname !== "/login") {
     return NextResponse.redirect(new URL("/login", request.url));
   }

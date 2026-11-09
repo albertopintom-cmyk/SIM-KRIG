@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 type CreatedGroup = {
+  groupName: string;
   username: string;
   temporaryPassword: string;
   projectId: string;
@@ -11,6 +12,8 @@ type CreatedGroup = {
 
 export default function GroupCreationForm() {
   const [groupName, setGroupName] = useState("");
+  const [username, setUsername] = useState("");
+  const [projectName, setProjectName] = useState("");
   const [createdGroup, setCreatedGroup] = useState<CreatedGroup | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -29,7 +32,7 @@ export default function GroupCreationForm() {
       const response = await fetch("/api/admin/groups", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ groupName }),
+        body: JSON.stringify({ groupName, username, projectName }),
       });
       const result: unknown = await response.json();
 
@@ -49,6 +52,8 @@ export default function GroupCreationForm() {
         result === null ||
         !("username" in result) ||
         typeof result.username !== "string" ||
+        !("groupName" in result) ||
+        typeof result.groupName !== "string" ||
         !("temporaryPassword" in result) ||
         typeof result.temporaryPassword !== "string" ||
         !("projectId" in result) ||
@@ -60,12 +65,15 @@ export default function GroupCreationForm() {
       }
 
       setCreatedGroup({
+        groupName: result.groupName,
         username: result.username,
         temporaryPassword: result.temporaryPassword,
         projectId: result.projectId,
         projectName: result.projectName,
       });
       setGroupName("");
+      setUsername("");
+      setProjectName("");
     } catch (error) {
       setErrorMessage(
         error instanceof Error
@@ -86,9 +94,34 @@ export default function GroupCreationForm() {
             className="rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100 focus:border-cyan-400 focus:outline-none"
             maxLength={100}
             onChange={(event) => setGroupName(event.target.value)}
-            placeholder="Ejemplo: ES2 Grupo 01"
+            placeholder="Ejemplo: EY001 - Grupo 1"
             required
             value={groupName}
+          />
+        </label>
+        <label className="flex flex-col gap-2 text-sm text-slate-300">
+          Usuario
+          <input
+            autoCapitalize="none"
+            autoComplete="off"
+            className="rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100 focus:border-cyan-400 focus:outline-none"
+            maxLength={64}
+            onChange={(event) => setUsername(event.target.value.toLowerCase())}
+            pattern="[a-z0-9_]{3,64}"
+            placeholder="Ejemplo: ey001_g01"
+            required
+            value={username}
+          />
+        </label>
+        <label className="flex flex-col gap-2 text-sm text-slate-300">
+          Proyecto
+          <input
+            className="rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100 focus:border-cyan-400 focus:outline-none"
+            maxLength={100}
+            onChange={(event) => setProjectName(event.target.value)}
+            placeholder="Ejemplo: Proyecto Grupo 1"
+            required
+            value={projectName}
           />
         </label>
         {errorMessage && (
@@ -118,6 +151,10 @@ export default function GroupCreationForm() {
             Grupo creado correctamente
           </h2>
           <dl className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div>
+              <dt className="text-sm text-slate-400">Grupo</dt>
+              <dd className="mt-1 text-slate-100">{createdGroup.groupName}</dd>
+            </div>
             <div>
               <dt className="text-sm text-slate-400">Usuario</dt>
               <dd className="mt-1 font-mono text-slate-100">
