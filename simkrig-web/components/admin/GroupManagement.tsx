@@ -15,6 +15,8 @@ export type ExistingProjectOption = {
   id: string;
   name: string;
   projectType: string;
+  assignedGroupId: string | null;
+  assignedGroupName: string | null;
 };
 
 type GroupFilter = "all" | "active" | "inactive";
@@ -213,6 +215,26 @@ export default function GroupManagement({
         ...previous,
         [group.id]: "Selecciona un proyecto existente para vincularlo.",
       }));
+      return;
+    }
+
+    const selectedProject = existingProjects.find((project) => project.id === projectId);
+    const currentProjectName = group.projectName;
+    const replacesGroupProject = group.isAssigned;
+    const transfersProject = Boolean(
+      selectedProject?.assignedGroupId &&
+      selectedProject.assignedGroupId !== group.id,
+    );
+    if (
+      (replacesGroupProject || transfersProject) &&
+      !window.confirm(
+        `Este cambio ${
+          transfersProject
+            ? `moverá "${selectedProject?.name}" desde ${selectedProject?.assignedGroupName ?? "otro grupo"}`
+            : `asignará "${selectedProject?.name}" al grupo`
+        }${replacesGroupProject ? ` y reemplazará el proyecto actual "${currentProjectName}"` : ""}. Los proyectos y sus datos no se eliminarán. ¿Continuar?`,
+      )
+    ) {
       return;
     }
 
@@ -504,7 +526,7 @@ export default function GroupManagement({
                         />
                         <select
                           className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-cyan-400 focus:outline-none"
-                          disabled={group.isAssigned || existingProjects.length === 0 || pendingId === group.id}
+                          disabled={existingProjects.length === 0 || pendingId === group.id}
                           onChange={(event) =>
                             setExistingProjectSelections((previous) => ({
                               ...previous,
@@ -516,7 +538,11 @@ export default function GroupManagement({
                           <option value="">Vincular proyecto existente…</option>
                           {existingProjects.map((project) => (
                             <option key={project.id} value={project.id}>
-                              {project.name} ({project.projectType === "teacher" ? "docente/legado" : "grupo"})
+                              {project.name} ({project.assignedGroupName
+                                ? `asignado a ${project.assignedGroupName}`
+                                : project.projectType === "teacher"
+                                  ? "docente/legado"
+                                  : "grupo"})
                             </option>
                           ))}
                         </select>
@@ -547,11 +573,11 @@ export default function GroupManagement({
                         </button>
                         <button
                           className="rounded-md border border-emerald-500 px-2 py-2 text-xs text-emerald-200 disabled:opacity-50"
-                          disabled={pendingId === group.id || group.isAssigned || existingProjects.length === 0}
+                          disabled={pendingId === group.id || existingProjects.length === 0}
                           onClick={() => void runAssignExistingProject(group)}
                           type="button"
                         >
-                          Vincular existente
+                          Asignar proyecto existente
                         </button>
                         <button
                           className="rounded-md border border-violet-500 px-2 py-2 text-xs text-violet-200 disabled:opacity-50"

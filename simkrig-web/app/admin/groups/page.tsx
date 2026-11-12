@@ -10,6 +10,8 @@ type ExistingProjectOption = {
   id: string;
   name: string;
   projectType: string;
+  assignedGroupId: string | null;
+  assignedGroupName: string | null;
 };
 
 export default function AdminGroupsPage() {
@@ -69,16 +71,30 @@ async function AdminGroupsContent() {
       .order("created_at", { ascending: false });
     if (projectsError) throw new Error(`Consulta projects: ${projectsError.message}`);
 
-    const assignedProjectIds = new Set(
-      (memberships ?? []).map((membership) => membership.project_id),
+    const profileNameById = new Map(
+      (profiles ?? []).map((group) => [
+        group.id,
+        group.display_name ?? group.username,
+      ]),
     );
-    existingProjects = (projects ?? [])
-      .filter((project) => !assignedProjectIds.has(project.id))
-      .map((project) => ({
+    const groupByProject = new Map(
+      (memberships ?? []).map((membership) => [
+        membership.project_id,
+        membership.user_id,
+      ]),
+    );
+    existingProjects = (projects ?? []).map((project) => {
+      const assignedGroupId = groupByProject.get(project.id) ?? null;
+      return {
         id: project.id,
         name: project.name,
         projectType: project.project_type,
-      }));
+        assignedGroupId,
+        assignedGroupName: assignedGroupId
+          ? profileNameById.get(assignedGroupId) ?? "Grupo existente"
+          : null,
+      };
+    });
 
     const groupMemberships = (memberships ?? []).filter((membership) =>
       groupIds.includes(membership.user_id),

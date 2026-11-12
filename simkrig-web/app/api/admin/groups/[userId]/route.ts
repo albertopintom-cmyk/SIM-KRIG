@@ -272,16 +272,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
         { status: 500 },
       );
     }
-    if (currentMembership) {
-      return NextResponse.json(
-        { error: "El grupo ya tiene un proyecto asignado. Desvincula o reasigna ese proyecto antes de continuar." },
-        { status: 409 },
-      );
-    }
 
     const { data: existingMembership, error: existingMembershipError } = await admin
       .from("project_members")
-      .select("user_id")
+      .select("user_id, project_id")
       .eq("project_id", projectId)
       .maybeSingle();
 
@@ -291,11 +285,70 @@ export async function POST(request: NextRequest, context: RouteContext) {
         { status: 500 },
       );
     }
-    if (existingMembership) {
-      return NextResponse.json(
-        { error: "El proyecto ya está asignado a otro grupo." },
-        { status: 409 },
-      );
+
+    if (currentMembership?.project_id === projectId) {
+      return NextResponse.json({
+        success: true,
+        projectId: project.id,
+        projectName: project.name,
+      });
+    }
+
+    if (existingMembership && existingMembership.user_id !== userId) {
+      const { data: previousAssignee, error: previousAssigneeError } = await admin
+        .from("user_profiles")
+        .select("id, role")
+        .eq("id", existingMembership.user_id)
+        .maybeSingle();
+
+      if (previousAssigneeError) {
+        return NextResponse.json(
+          { error: `No se pudo validar el grupo que tiene asignado el proyecto: ${previousAssigneeError.message}` },
+          { status: 500 },
+        );
+      }
+
+      if (!previousAssignee || previousAssignee.role !== "student_group") {
+        return NextResponse.json(
+          { error: "El proyecto está asociado a un usuario que no es un grupo. No se modificó la asignación." },
+          { status: 409 },
+        );
+      }
+    }
+
+    const membershipsToRemove = [
+      ...(currentMembership ? [{ user_id: userId, project_id: currentMembership.project_id }] : []),
+      ...(existingMembership && existingMembership.user_id !== userId
+        ? [{ user_id: existingMembership.user_id, project_id: existingMembership.project_id }]
+        : []),
+    ];
+
+    for (const membership of membershipsToRemove) {
+      const { error: deleteError } = await admin
+        .from("project_members")
+        .delete()
+        .eq("user_id", membership.user_id)
+        .eq("project_id", membership.project_id);
+
+      if (deleteError) {
+        const rollbackErrors: string[] = [];
+        for (const removed of membershipsToRemove) {
+          if (removed.user_id === membership.user_id && removed.project_id === membership.project_id) break;
+          const { error: rollbackError } = await admin
+            .from("project_members")
+            .upsert(removed, { onConflict: "user_id" });
+          if (rollbackError) rollbackErrors.push(rollbackError.message);
+        }
+
+        return NextResponse.json(
+          {
+            error: rollbackErrors.length
+              ? `No se pudo actualizar la asignación: ${deleteError.message}. Error al restaurar: ${rollbackErrors.join("; ")}`
+              : `No se pudo actualizar la asignación: ${deleteError.message}`,
+          },
+          { status: 500 },
+        );
+      }
     }
 
     const { error: assignmentError } = await admin
@@ -303,8 +356,20 @@ export async function POST(request: NextRequest, context: RouteContext) {
       .insert({ user_id: userId, project_id: projectId });
 
     if (assignmentError) {
+      const rollbackErrors: string[] = [];
+      for (const membership of membershipsToRemove) {
+        const { error: rollbackError } = await admin
+          .from("project_members")
+          .upsert(membership, { onConflict: "user_id" });
+        if (rollbackError) rollbackErrors.push(rollbackError.message);
+      }
+
       return NextResponse.json(
-        { error: `No se pudo vincular el proyecto existente: ${assignmentError.message}` },
+        {
+          error: rollbackErrors.length
+            ? `No se pudo asignar el proyecto: ${assignmentError.message}. Error al restaurar asignaciones previas: ${rollbackErrors.join("; ")}`
+            : `No se pudo asignar el proyecto: ${assignmentError.message}`,
+        },
         { status: 500 },
       );
     }

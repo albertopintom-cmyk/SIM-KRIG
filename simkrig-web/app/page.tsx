@@ -70,16 +70,14 @@ async function HomeRedirect() {
             Tu cuenta aún no tiene un proyecto asignado
           </h1>
           <p className="mt-4 text-slate-300">
-            La cuenta ingresada está activa, pero no está vinculada a ningún
-            proyecto de trabajo. Contacta a tu docente o administrador para
-            asignarte un proyecto antes de continuar.
+            La cuenta está activa, pero aún no está vinculada a un proyecto.
+            El administrador debe asignarle un proyecto desde la sección
+            “Grupos” antes de que puedas trabajar.
           </p>
-          <a
-            href="/login"
-            className="mt-6 inline-flex rounded-lg bg-cyan-500 px-4 py-2 font-medium text-slate-950 transition hover:bg-cyan-400"
-          >
-            Volver a iniciar sesión
-          </a>
+          <p className="mt-4 text-sm text-slate-400">
+            Usuario para informar al administrador:{" "}
+            <strong className="text-slate-200">{profile.username ?? "No disponible"}</strong>
+          </p>
         </div>
       </main>
     );
