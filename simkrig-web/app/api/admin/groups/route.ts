@@ -38,10 +38,15 @@ export async function POST(request: NextRequest) {
   const action = typeof input.action === "string" ? input.action : null;
   if (action === "bulk-delete") {
     const requestedUserIds = Array.isArray(input.userIds)
-      ? input.userIds.filter((value): value is string => typeof value === "string")
+      ? [...new Set(input.userIds.filter((value): value is string => typeof value === "string"))]
       : [];
 
-    if (requestedUserIds.length === 0) {
+    if (
+      requestedUserIds.length === 0 ||
+      requestedUserIds.some(
+        (id) => !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id),
+      )
+    ) {
       return NextResponse.json({ error: "Debes elegir al menos un grupo para eliminar." }, { status: 400 });
     }
 
@@ -72,6 +77,21 @@ export async function POST(request: NextRequest) {
 
     for (const targetUserId of requestedUserIds) {
       try {
+        const { data: targetProfile, error: targetProfileError } = await admin
+          .from("user_profiles")
+          .select("id, role")
+          .eq("id", targetUserId)
+          .maybeSingle();
+
+        if (targetProfileError) {
+          failures.push(`Grupo ${targetUserId}: ${targetProfileError.message}`);
+          continue;
+        }
+        if (!targetProfile || targetProfile.role !== "student_group") {
+          failures.push(`El usuario ${targetUserId} no es un grupo válido.`);
+          continue;
+        }
+
         const { data: memberships, error: membershipLookupError } = await admin
           .from("project_members")
           .select("project_id")
@@ -83,6 +103,18 @@ export async function POST(request: NextRequest) {
         }
 
         const projectIds = (memberships ?? []).map((membership) => membership.project_id);
+        const { data: assignedProjects, error: assignedProjectsError } = projectIds.length
+          ? await admin
+              .from("projects")
+              .select("id, project_type")
+              .in("id", projectIds)
+          : { data: [], error: null };
+
+        if (assignedProjectsError) {
+          failures.push(`Grupo ${targetUserId}: ${assignedProjectsError.message}`);
+          continue;
+        }
+
         if (projectIds.length > 0) {
           const { error: memberCleanupError } = await admin
             .from("project_members")
@@ -94,10 +126,12 @@ export async function POST(request: NextRequest) {
             continue;
           }
 
-          const { error: projectCleanupError } = await admin
-            .from("projects")
-            .delete()
-            .in("id", projectIds);
+          const managedProjectIds = (assignedProjects ?? [])
+            .filter((project) => project.project_type === "group")
+            .map((project) => project.id);
+          const { error: projectCleanupError } = managedProjectIds.length
+            ? await admin.from("projects").delete().in("id", managedProjectIds)
+            : { error: null };
 
           if (projectCleanupError) {
             failures.push(`Grupo ${targetUserId}: ${projectCleanupError.message}`);

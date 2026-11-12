@@ -11,6 +11,12 @@ export type AdminGroup = {
   projectName: string;
 };
 
+export type ExistingProjectOption = {
+  id: string;
+  name: string;
+  projectType: string;
+};
+
 type GroupFilter = "all" | "active" | "inactive";
 
 type ActivityEntry = {
@@ -19,7 +25,13 @@ type ActivityEntry = {
   type: "success" | "error";
 };
 
-export default function GroupManagement({ groups }: { groups: AdminGroup[] }) {
+export default function GroupManagement({
+  groups,
+  existingProjects,
+}: {
+  groups: AdminGroup[];
+  existingProjects: ExistingProjectOption[];
+}) {
   const [results, setResults] = useState<Record<string, string>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [pendingId, setPendingId] = useState<string | null>(null);
@@ -27,6 +39,7 @@ export default function GroupManagement({ groups }: { groups: AdminGroup[] }) {
   const [assignmentDrafts, setAssignmentDrafts] = useState<Record<string, string>>({});
   const [nameDrafts, setNameDrafts] = useState<Record<string, string>>({});
   const [reassignTargets, setReassignTargets] = useState<Record<string, string>>({});
+  const [existingProjectSelections, setExistingProjectSelections] = useState<Record<string, string>>({});
   const [filter, setFilter] = useState<GroupFilter>("all");
   const [activity, setActivity] = useState<ActivityEntry[]>([]);
 
@@ -188,6 +201,45 @@ export default function GroupManagement({ groups }: { groups: AdminGroup[] }) {
       const message = error instanceof Error ? error.message : "Error inesperado.";
       setErrors((previous) => ({ ...previous, [group.id]: message }));
       pushActivity(`Error al asignar proyecto al grupo ${group.groupName}: ${message}`, "error");
+    } finally {
+      setPendingId(null);
+    }
+  }
+
+  async function runAssignExistingProject(group: AdminGroup) {
+    const projectId = existingProjectSelections[group.id] ?? "";
+    if (!projectId) {
+      setErrors((previous) => ({
+        ...previous,
+        [group.id]: "Selecciona un proyecto existente para vincularlo.",
+      }));
+      return;
+    }
+
+    setPendingId(group.id);
+    setErrors((previous) => ({ ...previous, [group.id]: "" }));
+    try {
+      const response = await fetch(`/api/admin/groups/${group.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "assign-existing-project", projectId }),
+      });
+      const result: unknown = await response.json();
+      if (!response.ok) {
+        const message =
+          typeof result === "object" && result !== null && "error" in result && typeof result.error === "string"
+            ? result.error
+            : "No se pudo vincular el proyecto existente.";
+        throw new Error(message);
+      }
+
+      const projectName = existingProjects.find((project) => project.id === projectId)?.name;
+      pushActivity(`Se vinculó el proyecto existente ${projectName ?? ""} al grupo ${group.groupName}.`);
+      await refreshAfterAction();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Error inesperado.";
+      setErrors((previous) => ({ ...previous, [group.id]: message }));
+      pushActivity(`Error al vincular proyecto existente al grupo ${group.groupName}: ${message}`, "error");
     } finally {
       setPendingId(null);
     }
@@ -436,6 +488,9 @@ export default function GroupManagement({ groups }: { groups: AdminGroup[] }) {
                     </td>
                     <td className="px-4 py-4">
                       <div className="w-48">
+                        <p className="mb-2 text-xs text-slate-400">
+                          Actual: {group.projectName || "Sin asignar"}
+                        </p>
                         <input
                           className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-cyan-400 focus:outline-none"
                           onChange={(event) =>
@@ -447,6 +502,24 @@ export default function GroupManagement({ groups }: { groups: AdminGroup[] }) {
                           placeholder="Nuevo proyecto"
                           value={assignmentDrafts[group.id] ?? ""}
                         />
+                        <select
+                          className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-cyan-400 focus:outline-none"
+                          disabled={group.isAssigned || existingProjects.length === 0 || pendingId === group.id}
+                          onChange={(event) =>
+                            setExistingProjectSelections((previous) => ({
+                              ...previous,
+                              [group.id]: event.target.value,
+                            }))
+                          }
+                          value={existingProjectSelections[group.id] ?? ""}
+                        >
+                          <option value="">Vincular proyecto existente…</option>
+                          {existingProjects.map((project) => (
+                            <option key={project.id} value={project.id}>
+                              {project.name} ({project.projectType === "teacher" ? "docente/legado" : "grupo"})
+                            </option>
+                          ))}
+                        </select>
                       </div>
                     </td>
                     <td className="px-4 py-4">
@@ -471,6 +544,14 @@ export default function GroupManagement({ groups }: { groups: AdminGroup[] }) {
                           type="button"
                         >
                           Asignar
+                        </button>
+                        <button
+                          className="rounded-md border border-emerald-500 px-2 py-2 text-xs text-emerald-200 disabled:opacity-50"
+                          disabled={pendingId === group.id || group.isAssigned || existingProjects.length === 0}
+                          onClick={() => void runAssignExistingProject(group)}
+                          type="button"
+                        >
+                          Vincular existente
                         </button>
                         <button
                           className="rounded-md border border-violet-500 px-2 py-2 text-xs text-violet-200 disabled:opacity-50"

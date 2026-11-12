@@ -6,6 +6,12 @@ import GroupManagement, { type AdminGroup } from "@/components/admin/GroupManage
 import { getCurrentProfile } from "@/lib/auth/getCurrentProfile";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
+type ExistingProjectOption = {
+  id: string;
+  name: string;
+  projectType: string;
+};
+
 export default function AdminGroupsPage() {
   return (
     <Suspense
@@ -39,6 +45,7 @@ async function AdminGroupsContent() {
   }
 
   let groups: AdminGroup[] = [];
+  let existingProjects: ExistingProjectOption[] = [];
   let errorMessage: string | null = null;
 
   try {
@@ -51,22 +58,42 @@ async function AdminGroupsContent() {
     if (groupsError) throw new Error(`Consulta user_profiles (grupos): ${groupsError.message}`);
 
     const groupIds = (profiles ?? []).map((group) => group.id);
-    const { data: memberships, error: membershipError } = groupIds.length
-      ? await admin.from("project_members").select("user_id, project_id").in("user_id", groupIds)
-      : { data: [], error: null };
+    const { data: memberships, error: membershipError } = await admin
+      .from("project_members")
+      .select("user_id, project_id");
     if (membershipError) throw new Error(`Consulta project_members: ${membershipError.message}`);
 
-    const projectIds = (memberships ?? []).map((membership) => membership.project_id);
-    const { data: projects, error: projectsError } = projectIds.length
+    const { data: projects, error: projectsError } = await admin
+      .from("projects")
+      .select("id, name, project_type")
+      .order("created_at", { ascending: false });
+    if (projectsError) throw new Error(`Consulta projects: ${projectsError.message}`);
+
+    const assignedProjectIds = new Set(
+      (memberships ?? []).map((membership) => membership.project_id),
+    );
+    existingProjects = (projects ?? [])
+      .filter((project) => !assignedProjectIds.has(project.id))
+      .map((project) => ({
+        id: project.id,
+        name: project.name,
+        projectType: project.project_type,
+      }));
+
+    const groupMemberships = (memberships ?? []).filter((membership) =>
+      groupIds.includes(membership.user_id),
+    );
+    const projectIds = groupMemberships.map((membership) => membership.project_id);
+    const { data: assignedProjects, error: assignedProjectsError } = projectIds.length
       ? await admin.from("projects").select("id, name").in("id", projectIds)
       : { data: [], error: null };
-    if (projectsError) throw new Error(`Consulta projects asignados: ${projectsError.message}`);
+    if (assignedProjectsError) throw new Error(`Consulta projects asignados: ${assignedProjectsError.message}`);
 
     const projectNames = new Map(
-      (projects ?? []).map((project) => [project.id, project.name]),
+      (assignedProjects ?? []).map((project) => [project.id, project.name]),
     );
     const projectByGroup = new Map(
-      (memberships ?? []).map((membership) => [
+      groupMemberships.map((membership) => [
         membership.user_id,
         projectNames.get(membership.project_id) ?? "Sin asignar",
       ]),
@@ -103,10 +130,10 @@ async function AdminGroupsContent() {
         </p>
         <h1 className="mt-3 text-3xl font-bold">Crear grupo</h1>
         <p className="mt-3 text-slate-400">
-          Crea una cuenta para el grupo y asígnale su proyecto.
+          Crea y administra grupos. También puedes vincular proyectos existentes sin borrar sus datos.
         </p>
         <GroupCreationForm />
-        <GroupManagement groups={groups} />
+        <GroupManagement groups={groups} existingProjects={existingProjects} />
       </div>
     </main>
   );

@@ -32,6 +32,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     action !== "deactivate" &&
     action !== "activate" &&
     action !== "assign-project" &&
+    action !== "assign-existing-project" &&
     action !== "reassign-project" &&
     action !== "reset-project" &&
     action !== "edit-name" &&
@@ -84,6 +85,19 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
 
     const projectIds = (memberships ?? []).map((membership) => membership.project_id);
+    const { data: assignedProjects, error: assignedProjectsError } = projectIds.length
+      ? await admin
+          .from("projects")
+          .select("id, project_type")
+          .in("id", projectIds)
+      : { data: [], error: null };
+
+    if (assignedProjectsError) {
+      return NextResponse.json(
+        { error: `No se pudieron consultar los proyectos del grupo: ${assignedProjectsError.message}` },
+        { status: 500 },
+      );
+    }
 
     if (projectIds.length > 0) {
       const { error: memberCleanupError } = await admin
@@ -98,10 +112,12 @@ export async function POST(request: NextRequest, context: RouteContext) {
         );
       }
 
-      const { error: projectCleanupError } = await admin
-        .from("projects")
-        .delete()
-        .in("id", projectIds);
+      const managedProjectIds = (assignedProjects ?? [])
+        .filter((project) => project.project_type === "group")
+        .map((project) => project.id);
+      const { error: projectCleanupError } = managedProjectIds.length
+        ? await admin.from("projects").delete().in("id", managedProjectIds)
+        : { error: null };
 
       if (projectCleanupError) {
         return NextResponse.json(
@@ -216,6 +232,88 @@ export async function POST(request: NextRequest, context: RouteContext) {
       );
     }
     return NextResponse.json({ success: true });
+  }
+
+  if (action === "assign-existing-project") {
+    const projectId =
+      typeof body === "object" && body !== null && "projectId" in body
+        ? String(body.projectId ?? "")
+        : "";
+
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(projectId)) {
+      return NextResponse.json({ error: "El proyecto seleccionado no es válido." }, { status: 400 });
+    }
+
+    const { data: project, error: projectError } = await admin
+      .from("projects")
+      .select("id, name")
+      .eq("id", projectId)
+      .maybeSingle();
+
+    if (projectError) {
+      return NextResponse.json(
+        { error: `No se pudo consultar el proyecto: ${projectError.message}` },
+        { status: 500 },
+      );
+    }
+    if (!project) {
+      return NextResponse.json({ error: "No se encontró el proyecto seleccionado." }, { status: 404 });
+    }
+
+    const { data: currentMembership, error: currentMembershipError } = await admin
+      .from("project_members")
+      .select("project_id")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (currentMembershipError) {
+      return NextResponse.json(
+        { error: `No se pudo consultar la asignación actual: ${currentMembershipError.message}` },
+        { status: 500 },
+      );
+    }
+    if (currentMembership) {
+      return NextResponse.json(
+        { error: "El grupo ya tiene un proyecto asignado. Desvincula o reasigna ese proyecto antes de continuar." },
+        { status: 409 },
+      );
+    }
+
+    const { data: existingMembership, error: existingMembershipError } = await admin
+      .from("project_members")
+      .select("user_id")
+      .eq("project_id", projectId)
+      .maybeSingle();
+
+    if (existingMembershipError) {
+      return NextResponse.json(
+        { error: `No se pudo comprobar si el proyecto ya está asignado: ${existingMembershipError.message}` },
+        { status: 500 },
+      );
+    }
+    if (existingMembership) {
+      return NextResponse.json(
+        { error: "El proyecto ya está asignado a otro grupo." },
+        { status: 409 },
+      );
+    }
+
+    const { error: assignmentError } = await admin
+      .from("project_members")
+      .insert({ user_id: userId, project_id: projectId });
+
+    if (assignmentError) {
+      return NextResponse.json(
+        { error: `No se pudo vincular el proyecto existente: ${assignmentError.message}` },
+        { status: 500 },
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      projectId: project.id,
+      projectName: project.name,
+    });
   }
 
   if (action === "reassign-project") {
@@ -375,6 +473,23 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
 
     const previousProjectId = currentMembership.project_id;
+    const { data: previousProject, error: previousProjectError } = await admin
+      .from("projects")
+      .select("id, project_type")
+      .eq("id", previousProjectId)
+      .maybeSingle();
+
+    if (previousProjectError) {
+      return NextResponse.json(
+        { error: `No se pudo consultar el proyecto actual: ${previousProjectError.message}` },
+        { status: 500 },
+      );
+    }
+
+    if (!previousProject) {
+      return NextResponse.json({ error: "No se encontró el proyecto actual del grupo." }, { status: 404 });
+    }
+
     const resetName = `Proyecto reiniciado - ${new Date().toISOString().slice(0, 10)}`;
 
     const { data: newProject, error: projectError } = await admin
@@ -412,16 +527,18 @@ export async function POST(request: NextRequest, context: RouteContext) {
       );
     }
 
-    const { error: cleanupError } = await admin
-      .from("projects")
-      .delete()
-      .eq("id", previousProjectId);
+    if (previousProject.project_type === "group") {
+      const { error: cleanupError } = await admin
+        .from("projects")
+        .delete()
+        .eq("id", previousProjectId);
 
-    if (cleanupError) {
-      return NextResponse.json(
-        { error: `El proyecto nuevo se creó, pero no se pudo limpiar el anterior: ${cleanupError.message}` },
-        { status: 500 },
-      );
+      if (cleanupError) {
+        return NextResponse.json(
+          { error: `El proyecto nuevo se creó, pero no se pudo limpiar el anterior: ${cleanupError.message}` },
+          { status: 500 },
+        );
+      }
     }
 
     return NextResponse.json({ success: true, projectId: newProject.id, projectName: newProject.name });

@@ -5,6 +5,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 const stages = [
   "Datos",
+  "Polígonos de influencia",
   "Tablas",
   "Visualización",
   "Bloques",
@@ -106,12 +107,17 @@ async function ProjectContent({
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {stages.map((stage) =>
               stage === "Datos" ||
+              stage === "Polígonos de influencia" ||
               stage === "Visualización" ||
               stage === "Bloques" ||
               stage === "Ley de Corte" ? (
                 <Link
                   className="rounded-xl border border-slate-800 bg-slate-900 p-6 transition hover:border-cyan-400"
-                  href={`/project/${project.id}/${stage === "Datos" ? "data" : stage === "Visualización" ? "visualization" : stage === "Bloques" ? "blocks" : "cutoff"}`}
+                  href={
+                    stage === "Polígonos de influencia"
+                      ? "/modules/polygons"
+                      : `/project/${project.id}/${stage === "Datos" ? "data" : stage === "Visualización" ? "visualization" : stage === "Bloques" ? "blocks" : "cutoff"}`
+                  }
                   key={stage}
                 >
                   <h3 className="text-lg font-semibold">{stage}</h3>
