@@ -38,10 +38,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   const { data: updated, error } = await admin.from("projects").update({
     name,
     description,
-  }).eq("id", projectId).eq("owner_id", user.id).eq("project_type", "teacher")
+  }).eq("id", projectId)
     .select("id, name, description, status").maybeSingle();
   if (error) return NextResponse.json({ error: `No se pudo actualizar: ${error.message}` }, { status: 500 });
-  if (!updated) return NextResponse.json({ error: "No se encontró un proyecto docente propio." }, { status: 404 });
+  if (!updated) return NextResponse.json({ error: "No se encontró el proyecto." }, { status: 404 });
   return NextResponse.json(updated);
 }
 
@@ -64,17 +64,15 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: "Acceso exclusivo para administradores." }, { status: 403 });
   }
   const admin = createSupabaseAdminClient();
-  const { data: ownedProject, error: ownershipError } = await admin.from("projects")
+  const { data: project, error: ownershipError } = await admin.from("projects")
     .select("id")
     .eq("id", projectId)
-    .eq("owner_id", user.id)
-    .eq("project_type", "teacher")
     .maybeSingle();
   if (ownershipError) {
     return NextResponse.json({ error: `No se pudo verificar el proyecto: ${ownershipError.message}` }, { status: 500 });
   }
-  if (!ownedProject) {
-    return NextResponse.json({ error: "No se encontró un proyecto docente propio." }, { status: 404 });
+  if (!project) {
+    return NextResponse.json({ error: "No se encontró el proyecto." }, { status: 404 });
   }
   const { error: resetError } = await admin.rpc("reset_project_data", {
     p_project_id: projectId,
@@ -83,7 +81,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: `No se pudieron eliminar los datos del proyecto: ${resetError.message}` }, { status: 500 });
   }
   const { data: deleted, error } = await admin.from("projects").delete()
-    .eq("id", projectId).eq("owner_id", user.id).eq("project_type", "teacher")
+    .eq("id", projectId)
     .select("id").maybeSingle();
   if (error) return NextResponse.json({ error: `No se pudo eliminar: ${error.message}` }, { status: 500 });
   if (!deleted) return NextResponse.json({ error: "No se encontró un proyecto docente propio." }, { status: 404 });

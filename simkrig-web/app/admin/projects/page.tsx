@@ -57,8 +57,8 @@ async function AdminProjectsContent() {
       <div className="mx-auto max-w-6xl">
         <p className="text-sm font-semibold uppercase tracking-wide text-cyan-300">ADMINISTRACIÓN</p>
         <h1 className="mt-3 text-3xl font-bold">Todos los proyectos</h1>
-        <p className="mt-3 text-slate-400">Administra tus proyectos docentes y consulta los proyectos de grupos.</p>
-        <div className="mt-8"><ProjectManagement currentUserId={profile.userId} projects={projects} /></div>
+        <p className="mt-3 text-slate-400">Administra todos los proyectos existentes, trabaja con sus módulos y elimina proyectos cuando sea necesario.</p>
+        <div className="mt-8"><ProjectManagement projects={projects} /></div>
       </div>
     </main>
   );

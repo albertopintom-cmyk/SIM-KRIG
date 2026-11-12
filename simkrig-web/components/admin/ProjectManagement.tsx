@@ -21,10 +21,8 @@ function formatActivity(value: string | null) {
 
 export default function ProjectManagement({
   projects,
-  currentUserId,
 }: {
   projects: AdminProject[];
-  currentUserId: string;
 }) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -82,7 +80,7 @@ export default function ProjectManagement({
   }
 
   async function deleteProject(project: AdminProject) {
-    if (!window.confirm(`¿Eliminar el proyecto "${project.name}" y todos sus datos?`)) return;
+    if (!window.confirm(`¿Eliminar definitivamente el proyecto "${project.name}" y todos sus datos? Si pertenece a un grupo, la cuenta del grupo se conservará pero quedará sin proyecto.`)) return;
     setPending(true);
     setError(null);
     try {
@@ -102,10 +100,6 @@ export default function ProjectManagement({
       setPending(false);
     }
   }
-
-  const editableProjects = projects.filter(
-    (project) => project.projectType === "teacher" && project.ownerId === currentUserId,
-  );
 
   return (
     <div className="space-y-12">
@@ -133,6 +127,9 @@ export default function ProjectManagement({
 
       <section>
         <h2 className="text-xl font-semibold">Todos los proyectos</h2>
+        <p className="mt-2 text-sm text-slate-400">
+          Desde aquí puedes abrir los módulos, editar o eliminar cualquier proyecto, incluidos los proyectos existentes antes del sistema de grupos.
+        </p>
         <div className="mt-5 overflow-x-auto rounded-xl border border-slate-800">
           <table className="w-full min-w-[700px] text-left text-sm">
             <thead className="bg-slate-900 text-slate-300">
@@ -140,7 +137,6 @@ export default function ProjectManagement({
             </thead>
             <tbody>
               {projects.map((project) => {
-                const editable = editableProjects.some((item) => item.id === project.id);
                 return (
                   <tr className="border-t border-slate-800" key={project.id}>
                     <td className="p-4">{project.projectType === "teacher" ? "Docente" : "Grupo"}</td>
@@ -148,12 +144,10 @@ export default function ProjectManagement({
                     <td className="p-4"><Link className="text-cyan-300 hover:underline" href={`/admin/projects/${project.id}`}>{project.name}</Link></td>
                     <td className="p-4">{formatActivity(project.lastActivityAt)}</td>
                     <td className="p-4">
-                      {editable ? (
-                        <div className="flex gap-3">
-                          <button className="text-cyan-300 hover:underline" onClick={() => startEditing(project)} type="button">Editar</button>
-                          <button className="text-red-300 hover:underline" disabled={pending} onClick={() => void deleteProject(project)} type="button">Eliminar</button>
-                        </div>
-                      ) : <span className="text-slate-500">—</span>}
+                      <div className="flex gap-3">
+                        <button className="text-cyan-300 hover:underline" onClick={() => startEditing(project)} type="button">Editar</button>
+                        <button className="text-red-300 hover:underline" disabled={pending} onClick={() => void deleteProject(project)} type="button">Eliminar</button>
+                      </div>
                     </td>
                   </tr>
                 );

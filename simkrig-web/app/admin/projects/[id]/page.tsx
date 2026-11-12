@@ -229,7 +229,53 @@ async function AdminProjectDetail({
               </dd>
             </div>
           </dl>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Link
+              className="rounded-lg bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400"
+              href={`/project/${project.id}`}
+            >
+              Abrir espacio de trabajo
+            </Link>
+            <Link
+              className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:border-cyan-400"
+              href="/modules/polygons"
+            >
+              Módulo de polígonos
+            </Link>
+          </div>
         </header>
+
+        <section className="mt-10">
+          <h2 className="text-2xl font-semibold">Módulos de trabajo disponibles</h2>
+          <p className="mt-2 text-slate-400">
+            Abre cada módulo en el contexto de este proyecto. Los módulos que aún no
+            tienen una pantalla funcional se muestran en el espacio de trabajo como etapas pendientes.
+          </p>
+          <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              { title: "Datos del proyecto", href: `/project/${project.id}/data` },
+              { title: "Visualización de sondajes", href: `/project/${project.id}/visualization` },
+              { title: "Generación de bloques", href: `/project/${project.id}/blocks` },
+              { title: "Ley de corte", href: `/project/${project.id}/cutoff` },
+            ].map((module) => (
+              <Link
+                className="rounded-xl border border-slate-800 bg-slate-900 p-5 transition hover:border-cyan-400"
+                href={module.href}
+                key={module.href}
+              >
+                <h3 className="font-semibold">{module.title}</h3>
+                <span className="mt-3 inline-block text-sm text-cyan-300">Abrir módulo →</span>
+              </Link>
+            ))}
+            <Link
+              className="rounded-xl border border-slate-800 bg-slate-900 p-5 transition hover:border-cyan-400"
+              href="/modules/polygons"
+            >
+              <h3 className="font-semibold">Polígonos de influencia</h3>
+              <span className="mt-3 inline-block text-sm text-cyan-300">Abrir módulo →</span>
+            </Link>
+          </div>
+        </section>
 
         <section
           aria-label="Resumen del proyecto"
