@@ -27,7 +27,16 @@ export async function POST(request: NextRequest, context: RouteContext) {
   } catch {
     return NextResponse.json({ error: "El cuerpo de la solicitud no es válido." }, { status: 400 });
   }
-  if (action !== "reset-password" && action !== "deactivate" && action !== "assign-project") {
+  if (
+    action !== "reset-password" &&
+    action !== "deactivate" &&
+    action !== "activate" &&
+    action !== "assign-project" &&
+    action !== "reassign-project" &&
+    action !== "reset-project" &&
+    action !== "edit-name" &&
+    action !== "delete-group"
+  ) {
     return NextResponse.json({ error: "La acción no es válida." }, { status: 400 });
   }
 
@@ -61,6 +70,125 @@ export async function POST(request: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: "No se encontró el grupo solicitado." }, { status: 404 });
   }
 
+  if (action === "delete-group") {
+    const { data: memberships, error: membershipLookupError } = await admin
+      .from("project_members")
+      .select("project_id")
+      .eq("user_id", userId);
+
+    if (membershipLookupError) {
+      return NextResponse.json(
+        { error: `No se pudo consultar la asignación del grupo: ${membershipLookupError.message}` },
+        { status: 500 },
+      );
+    }
+
+    const projectIds = (memberships ?? []).map((membership) => membership.project_id);
+
+    if (projectIds.length > 0) {
+      const { error: memberCleanupError } = await admin
+        .from("project_members")
+        .delete()
+        .eq("user_id", userId);
+
+      if (memberCleanupError) {
+        return NextResponse.json(
+          { error: `No se pudo limpiar la asignación del proyecto: ${memberCleanupError.message}` },
+          { status: 500 },
+        );
+      }
+
+      const { error: projectCleanupError } = await admin
+        .from("projects")
+        .delete()
+        .in("id", projectIds);
+
+      if (projectCleanupError) {
+        return NextResponse.json(
+          { error: `No se pudo eliminar el proyecto del grupo: ${projectCleanupError.message}` },
+          { status: 500 },
+        );
+      }
+    }
+
+    const { error: profileDeleteError } = await admin
+      .from("user_profiles")
+      .delete()
+      .eq("id", userId);
+
+    if (profileDeleteError) {
+      return NextResponse.json(
+        { error: `No se pudo eliminar el perfil del grupo: ${profileDeleteError.message}` },
+        { status: 500 },
+      );
+    }
+
+    const { error: authDeleteError } = await admin.auth.admin.deleteUser(userId);
+    if (authDeleteError) {
+      return NextResponse.json(
+        { error: `El perfil se eliminó, pero no se pudo borrar la cuenta Auth: ${authDeleteError.message}` },
+        { status: 500 },
+      );
+    }
+
+    return NextResponse.json({ success: true });
+  }
+
+  if (action === "edit-name") {
+    const requestedName =
+      typeof body === "object" && body !== null && "groupName" in body
+        ? String(body.groupName ?? "").trim()
+        : "";
+
+    if (!requestedName || requestedName.length > 100) {
+      return NextResponse.json(
+        { error: "Debes indicar un nombre de grupo válido." },
+        { status: 400 },
+      );
+    }
+
+    const { error: updateError } = await admin
+      .from("user_profiles")
+      .update({ display_name: requestedName })
+      .eq("id", userId);
+
+    if (updateError) {
+      return NextResponse.json(
+        { error: `No se pudo actualizar el nombre del grupo: ${updateError.message}` },
+        { status: 500 },
+      );
+    }
+
+    return NextResponse.json({ success: true, groupName: requestedName });
+  }
+
+  if (action === "activate") {
+    const { error: profileUpdateError } = await admin
+      .from("user_profiles")
+      .update({ is_active: true })
+      .eq("id", userId);
+
+    if (profileUpdateError) {
+      return NextResponse.json(
+        { error: `No se pudo reactivar el grupo: ${profileUpdateError.message}` },
+        { status: 500 },
+      );
+    }
+
+    const { error: authError } = await admin.auth.admin.updateUserById(userId, {
+      ban_duration: "none",
+    });
+
+    if (authError) {
+      return NextResponse.json(
+        { error: `No se pudo reactivar la cuenta Auth: ${authError.message}` },
+        { status: 500 },
+      );
+    }
+
+    return NextResponse.json({ success: true });
+  }
+
   if (action === "deactivate") {
     const { error: profileUpdateError } = await admin
       .from("user_profiles")
@@ -88,6 +216,215 @@ export async function POST(request: NextRequest, context: RouteContext) {
       );
     }
     return NextResponse.json({ success: true });
+  }
+
+  if (action === "reassign-project") {
+    const targetUserId =
+      typeof body === "object" && body !== null && "targetUserId" in body
+        ? String(body.targetUserId ?? "")
+        : "";
+
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(targetUserId)) {
+      return NextResponse.json({ error: "Debes elegir un grupo válido para recibir el proyecto." }, { status: 400 });
+    }
+
+    if (targetUserId === userId) {
+      return NextResponse.json({ error: "El grupo no puede reasignarse a sí mismo." }, { status: 400 });
+    }
+
+    const { data: targetGroup, error: targetError } = await admin
+      .from("user_profiles")
+      .select("id, role, is_active")
+      .eq("id", targetUserId)
+      .maybeSingle();
+
+    if (targetError) {
+      return NextResponse.json({ error: `No se pudo validar el grupo destino: ${targetError.message}` }, { status: 500 });
+    }
+    if (!targetGroup || targetGroup.role !== "student_group") {
+      return NextResponse.json({ error: "No se encontró un grupo válido como destino." }, { status: 404 });
+    }
+
+    const { data: sourceMembership, error: sourceMembershipError } = await admin
+      .from("project_members")
+      .select("project_id")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (sourceMembershipError) {
+      return NextResponse.json(
+        { error: `No se pudo leer la asignación del grupo origen: ${sourceMembershipError.message}` },
+        { status: 500 },
+      );
+    }
+
+    if (!sourceMembership) {
+      return NextResponse.json({ error: "El grupo de origen no tiene un proyecto asignado." }, { status: 409 });
+    }
+
+    const { data: targetMembership, error: targetMembershipError } = await admin
+      .from("project_members")
+      .select("project_id")
+      .eq("user_id", targetUserId)
+      .maybeSingle();
+
+    if (targetMembershipError) {
+      return NextResponse.json(
+        { error: `No se pudo leer la asignación del grupo destino: ${targetMembershipError.message}` },
+        { status: 500 },
+      );
+    }
+
+    const sourceProjectId = sourceMembership.project_id;
+    const targetProjectId = targetMembership?.project_id ?? null;
+
+    if (sourceProjectId === targetProjectId) {
+      return NextResponse.json({ error: "El grupo destino ya tiene ese proyecto asignado." }, { status: 409 });
+    }
+
+    if (targetMembership) {
+      const { error: sourceDeleteError } = await admin
+        .from("project_members")
+        .delete()
+        .eq("user_id", userId);
+
+      if (sourceDeleteError) {
+        return NextResponse.json(
+          { error: `No se pudo liberar el proyecto del grupo origen: ${sourceDeleteError.message}` },
+          { status: 500 },
+        );
+      }
+
+      const { error: targetDeleteError } = await admin
+        .from("project_members")
+        .delete()
+        .eq("user_id", targetUserId);
+
+      if (targetDeleteError) {
+        return NextResponse.json(
+          { error: `No se pudo liberar el proyecto del grupo destino: ${targetDeleteError.message}` },
+          { status: 500 },
+        );
+      }
+
+      const { error: firstSwapError } = await admin
+        .from("project_members")
+        .upsert({ user_id: userId, project_id: targetProjectId! }, { onConflict: "user_id" });
+
+      if (firstSwapError) {
+        return NextResponse.json(
+          { error: `No se pudo asignar el proyecto al grupo origen: ${firstSwapError.message}` },
+          { status: 500 },
+        );
+      }
+
+      const { error: secondSwapError } = await admin
+        .from("project_members")
+        .upsert({ user_id: targetUserId, project_id: sourceProjectId }, { onConflict: "user_id" });
+
+      if (secondSwapError) {
+        return NextResponse.json(
+          { error: `No se pudo mover el proyecto al grupo destino: ${secondSwapError.message}` },
+          { status: 500 },
+        );
+      }
+    } else {
+      const { error: sourceDeleteError } = await admin
+        .from("project_members")
+        .delete()
+        .eq("user_id", userId);
+
+      if (sourceDeleteError) {
+        return NextResponse.json(
+          { error: `No se pudo liberar el proyecto del grupo origen: ${sourceDeleteError.message}` },
+          { status: 500 },
+        );
+      }
+
+      const { error: transferError } = await admin
+        .from("project_members")
+        .upsert({ user_id: targetUserId, project_id: sourceProjectId }, { onConflict: "user_id" });
+
+      if (transferError) {
+        return NextResponse.json(
+          { error: `No se pudo transferir el proyecto al grupo destino: ${transferError.message}` },
+          { status: 500 },
+        );
+      }
+    }
+
+    return NextResponse.json({ success: true });
+  }
+
+  if (action === "reset-project") {
+    const { data: currentMembership, error: currentMembershipError } = await admin
+      .from("project_members")
+      .select("project_id")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (currentMembershipError) {
+      return NextResponse.json(
+        { error: `No se pudo consultar la asignación del proyecto: ${currentMembershipError.message}` },
+        { status: 500 },
+      );
+    }
+
+    if (!currentMembership) {
+      return NextResponse.json({ error: "El grupo no tiene un proyecto asignado para reiniciar." }, { status: 409 });
+    }
+
+    const previousProjectId = currentMembership.project_id;
+    const resetName = `Proyecto reiniciado - ${new Date().toISOString().slice(0, 10)}`;
+
+    const { data: newProject, error: projectError } = await admin
+      .from("projects")
+      .insert({
+        name: resetName,
+        description: `Proyecto reiniciado para el grupo ${userId}.`,
+        status: "active",
+        project_type: "group",
+        owner_id: user.id,
+      })
+      .select("id, name")
+      .single();
+
+    if (projectError || !newProject) {
+      return NextResponse.json(
+        {
+          error: projectError
+            ? `No se pudo crear el proyecto reiniciado: ${projectError.message}`
+            : "La base de datos no devolvió el proyecto creado.",
+        },
+        { status: 500 },
+      );
+    }
+
+    const { error: transferError } = await admin
+      .from("project_members")
+      .update({ project_id: newProject.id })
+      .eq("user_id", userId);
+
+    if (transferError) {
+      return NextResponse.json(
+        { error: `No se pudo transferir la asignación al nuevo proyecto: ${transferError.message}` },
+        { status: 500 },
+      );
+    }
+
+    const { error: cleanupError } = await admin
+      .from("projects")
+      .delete()
+      .eq("id", previousProjectId);
+
+    if (cleanupError) {
+      return NextResponse.json(
+        { error: `El proyecto nuevo se creó, pero no se pudo limpiar el anterior: ${cleanupError.message}` },
+        { status: 500 },
+      );
+    }
+
+    return NextResponse.json({ success: true, projectId: newProject.id, projectName: newProject.name });
   }
 
   if (action === "assign-project") {

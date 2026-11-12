@@ -34,6 +34,108 @@ export async function POST(request: NextRequest) {
     typeof body === "object" && body !== null
       ? body as Record<string, unknown>
       : {};
+
+  const action = typeof input.action === "string" ? input.action : null;
+  if (action === "bulk-delete") {
+    const requestedUserIds = Array.isArray(input.userIds)
+      ? input.userIds.filter((value): value is string => typeof value === "string")
+      : [];
+
+    if (requestedUserIds.length === 0) {
+      return NextResponse.json({ error: "Debes elegir al menos un grupo para eliminar." }, { status: 400 });
+    }
+
+    const supabase = await createServerSupabaseClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: "Debes iniciar sesión." }, { status: 401 });
+    }
+
+    const { data: profile, error: profileError } = await supabase
+      .from("user_profiles")
+      .select("role, is_active")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (profileError) {
+      return NextResponse.json(
+        { error: `No se pudo verificar el rol: ${profileError.message}` },
+        { status: 500 },
+      );
+    }
+    if (profile?.role !== "admin" || !profile.is_active) {
+      return NextResponse.json({ error: "Acceso exclusivo para administradores." }, { status: 403 });
+    }
+
+    const admin = createSupabaseAdminClient();
+    const failures: string[] = [];
+
+    for (const targetUserId of requestedUserIds) {
+      try {
+        const { data: memberships, error: membershipLookupError } = await admin
+          .from("project_members")
+          .select("project_id")
+          .eq("user_id", targetUserId);
+
+        if (membershipLookupError) {
+          failures.push(`Grupo ${targetUserId}: ${membershipLookupError.message}`);
+          continue;
+        }
+
+        const projectIds = (memberships ?? []).map((membership) => membership.project_id);
+        if (projectIds.length > 0) {
+          const { error: memberCleanupError } = await admin
+            .from("project_members")
+            .delete()
+            .eq("user_id", targetUserId);
+
+          if (memberCleanupError) {
+            failures.push(`Grupo ${targetUserId}: ${memberCleanupError.message}`);
+            continue;
+          }
+
+          const { error: projectCleanupError } = await admin
+            .from("projects")
+            .delete()
+            .in("id", projectIds);
+
+          if (projectCleanupError) {
+            failures.push(`Grupo ${targetUserId}: ${projectCleanupError.message}`);
+            continue;
+          }
+        }
+
+        const { error: profileDeleteError } = await admin
+          .from("user_profiles")
+          .delete()
+          .eq("id", targetUserId);
+
+        if (profileDeleteError) {
+          failures.push(`Grupo ${targetUserId}: ${profileDeleteError.message}`);
+          continue;
+        }
+
+        const { error: authDeleteError } = await admin.auth.admin.deleteUser(targetUserId);
+        if (authDeleteError) {
+          failures.push(`Grupo ${targetUserId}: ${authDeleteError.message}`);
+        }
+      } catch (error) {
+        failures.push(
+          `Grupo ${targetUserId}: ${error instanceof Error ? error.message : "Error inesperado."}`,
+        );
+      }
+    }
+
+    if (failures.length > 0) {
+      return NextResponse.json(
+        { error: `No se pudieron eliminar todos los grupos: ${failures.join("; ")}` },
+        { status: 500 },
+      );
+    }
+
+    return NextResponse.json({ success: true, deletedCount: requestedUserIds.length });
+  }
+
   const groupName = getText(input.groupName, 100);
   const username =
     typeof input.username === "string" ? input.username.trim().toLowerCase() : "";
