@@ -61,19 +61,27 @@ async function HomeRedirect() {
 
   if (!assignment) {
     return (
-      <pre>
-        {JSON.stringify(
-          {
-            authUid: profile.userId,
-            profileUserId: profile.userId,
-            membershipRows: 0,
-            membershipResult: assignment,
-            projectId: null,
-          },
-          null,
-          2,
-        )}
-      </pre>
+      <main className="min-h-screen bg-slate-950 px-6 py-12 text-slate-100">
+        <div className="mx-auto max-w-xl rounded-xl border border-slate-800 bg-slate-900 p-8 shadow-2xl">
+          <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-400">
+            SIM-KRIG
+          </p>
+          <h1 className="mt-4 text-2xl font-bold text-white">
+            Tu cuenta aún no tiene un proyecto asignado
+          </h1>
+          <p className="mt-4 text-slate-300">
+            La cuenta ingresada está activa, pero no está vinculada a ningún
+            proyecto de trabajo. Contacta a tu docente o administrador para
+            asignarte un proyecto antes de continuar.
+          </p>
+          <a
+            href="/login"
+            className="mt-6 inline-flex rounded-lg bg-cyan-500 px-4 py-2 font-medium text-slate-950 transition hover:bg-cyan-400"
+          >
+            Volver a iniciar sesión
+          </a>
+        </div>
+      </main>
     );
   }
 
