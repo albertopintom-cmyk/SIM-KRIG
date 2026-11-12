@@ -3,8 +3,8 @@ import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import {
   getCurrentProfile,
-  getServerSupabaseClientForRequest,
 } from "@/lib/auth/getCurrentProfile";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export default function Page() {
   return (
@@ -48,8 +48,8 @@ async function HomeRedirect() {
     );
   }
 
-  const supabase = await getServerSupabaseClientForRequest();
-  const { data: assignment, error } = await supabase
+  const admin = createSupabaseAdminClient();
+  const { data: assignment, error } = await admin
     .from("project_members")
     .select("project_id")
     .eq("user_id", profile.userId)
