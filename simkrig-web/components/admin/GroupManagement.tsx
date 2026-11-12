@@ -15,20 +15,42 @@ export default function GroupManagement({ groups }: { groups: AdminGroup[] }) {
   const [results, setResults] = useState<Record<string, string>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [assignmentDrafts, setAssignmentDrafts] = useState<Record<string, string>>({});
 
-  async function runAction(group: AdminGroup, action: "reset-password" | "deactivate") {
+  async function runAction(
+    group: AdminGroup,
+    action: "reset-password" | "deactivate" | "assign-project",
+    projectNameOverride?: string,
+  ) {
     if (
       action === "deactivate" &&
       !window.confirm(`¿Desactivar el grupo "${group.groupName}"? Perderá el acceso al proyecto.`)
     ) return;
+
+    if (action === "assign-project") {
+      const projectName = (projectNameOverride ?? assignmentDrafts[group.id] ?? "").trim();
+      if (!projectName) {
+        setErrors((previous) => ({
+          ...previous,
+          [group.id]: "Debes escribir el nombre del proyecto para asignarlo.",
+        }));
+        return;
+      }
+    }
+
     setPendingId(group.id);
     setErrors((previous) => ({ ...previous, [group.id]: "" }));
     setResults((previous) => ({ ...previous, [group.id]: "" }));
     try {
+      const payload =
+        action === "assign-project"
+          ? { action, projectName: (projectNameOverride ?? assignmentDrafts[group.id] ?? "").trim() }
+          : { action };
+
       const response = await fetch(`/api/admin/groups/${group.id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action }),
+        body: JSON.stringify(payload),
       });
       const result: unknown = await response.json();
       if (!response.ok) {
@@ -39,15 +61,14 @@ export default function GroupManagement({ groups }: { groups: AdminGroup[] }) {
             : "No se pudo completar la acción.";
         throw new Error(message);
       }
+
       const temporaryPassword =
         typeof result === "object" && result !== null &&
         "temporaryPassword" in result && typeof result.temporaryPassword === "string"
           ? result.temporaryPassword
           : null;
-      if (
-        action === "reset-password" &&
-        temporaryPassword !== null
-      ) {
+
+      if (action === "reset-password" && temporaryPassword !== null) {
         setResults((previous) => ({ ...previous, [group.id]: temporaryPassword }));
       } else {
         window.location.reload();
@@ -103,6 +124,32 @@ export default function GroupManagement({ groups }: { groups: AdminGroup[] }) {
                   </button>
                 </div>
               </div>
+
+              <div className="mt-4 rounded-lg border border-slate-800 bg-slate-950/80 p-3">
+                <p className="text-xs uppercase tracking-wide text-slate-400">Asignación del proyecto</p>
+                <div className="mt-3 flex flex-col gap-3 sm:flex-row">
+                  <input
+                    className="flex-1 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 focus:border-cyan-400 focus:outline-none"
+                    onChange={(event) =>
+                      setAssignmentDrafts((previous) => ({
+                        ...previous,
+                        [group.id]: event.target.value,
+                      }))
+                    }
+                    placeholder="Nombre del proyecto para el grupo"
+                    value={assignmentDrafts[group.id] ?? ""}
+                  />
+                  <button
+                    className="rounded-lg bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-60"
+                    disabled={pendingId === group.id}
+                    onClick={() => void runAction(group, "assign-project")}
+                    type="button"
+                  >
+                    {pendingId === group.id ? "Asignando..." : "Asignar proyecto"}
+                  </button>
+                </div>
+              </div>
+
               {results[group.id] && (
                 <p className="mt-4 break-all rounded bg-slate-950 p-3 font-mono text-sm">
                   Contraseña temporal: {results[group.id]}
